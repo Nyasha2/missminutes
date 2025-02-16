@@ -33,6 +33,8 @@ graph LR;
 
 New Specification:
 
+(Notes)
+
 I should be able to add tasks (with perhaps an assistant for better estimation)
 where each task most importantly has a duration and a do-by date.
 
@@ -41,7 +43,9 @@ as much specificity at the beginning. Then I will add new tasks as they come
 (like in the GTD system). 
 
 Also, in setting up I should set up how many hours I want to be working per week
-and time windows I can work in. 
+and time windows I can work in. The time window is default, but if for a certain
+week I feel like I want to work more or less, or maybe some days I can't 
+work certain hours, I can change that. 
 
 The prime purpose of the system is to take away the decision fatigue of choosing
 when to do tasks. My only responsibility is only to add tasks (maybe with AI assistant 
@@ -65,7 +69,7 @@ people for joint tasks.
 Minimum Viable Product I believe interfaces with Google Calendar, coz that's the only
 reasonable I actually use it, though I could use a terminal UI for quick testing (tho that could be a pain to implement).
 
-Development roadmap:
+(Spec)
 
 - Version 0.0: Core Task Management
   - Simple CLI interface for basic operations
@@ -83,8 +87,28 @@ Development roadmap:
       - Respects due dates
       - Outputs a basic daily schedule
 
+(Notes)
+I think it would be cool to have different time window profiles, say one for
+school work, another for exercise. This way, I can specify the time windows when
+I can do certain things. Another aspect of the profile (tho it is a different
+kind of thing) is for like school vs. holidays. So one profile is in the sense
+of within a week, i can have different time window profiles and the other is
+outside of that, i can have a different work/exercise profile for school vs.
+holidays.
+
+(Implementation Details)
+The scheduling algorithm is a first-fit algorithm. It sorts the tasks by due date
+and then tries to fit each task into the earliest available time slot. It has
+error handling for when a task can't be scheduled before its due date.
+
+(Notes)
+In the next version, I need to improve on the first-fit algorithm. 
+Also, question: how do i resolve conflicts in windows, can the exercise window
+have the same time availability as the work window? i think it should. 
+
 Version 0.1: Google Calendar integration
 Version 0.2: Recurring tasks
+    - A README.md file (finally)
 Version 0.3: Notification system
 Version 0.4: AI assistance for task estimation
 Version 1.0: More sophisticated scheduling
