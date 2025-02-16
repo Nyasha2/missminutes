@@ -1,0 +1,90 @@
+Old Flowchart for Initial Idea:
+
+```mermaid
+graph LR;
+    A(Start) -->|User logs in| B(Dashboard);
+    A -->|User needs to set up| C(Setup);
+    C -->|Enter API key| D(Open AI API Key);
+    C -->|OAuth with Google| E(Connect Google Calendar);
+    C -->|Set up mail| F(Set up Mail Forwarding);
+
+    B -->|Choose View| G(Outline View);
+    B -->|Choose View| H(Compass View);
+    B -->|Choose View| I(Inbox View);
+    B -->|Choose View| J(Upcoming Tasks View);
+    B -->|Choose View| V(Assistant View);
+    
+    G --> K{Task Actions};
+    K -->|Add Task| L(Add Task);
+    K -->|Edit Task| M(Edit Task);
+
+    I --> O(Add New Task);
+
+    H --> P(Analyze Patterns);
+    H --> Q(Get Suggestions);
+    
+    J --> R(View Upcoming Tasks);
+    J --> S(View Checked Out Task);
+    R --> T(Checkout Task);
+
+    V -->|Ask for information| U(Provide Information);
+    V -->|Perform action| W(Execute Action);
+```
+
+New Specification:
+
+I should be able to add tasks (with perhaps an assistant for better estimation)
+where each task most importantly has a duration and a do-by date.
+
+I want to add tasks I know are recurring like assignments, perhaps with not
+as much specificity at the beginning. Then I will add new tasks as they come 
+(like in the GTD system). 
+
+Also, in setting up I should set up how many hours I want to be working per week
+and time windows I can work in. 
+
+The prime purpose of the system is to take away the decision fatigue of choosing
+when to do tasks. My only responsibility is only to add tasks (maybe with AI assistant 
+help so I add all the important information for the system to work well). I am also
+to determine what space I have available and the system does the rest.
+
+There should be a great notification system so I can be notified of non-trivial
+calendar things, like say when what I have to do exceeds what I have set as my
+available time (or when they are very close)
+
+Since I am developing the system for myself, I should also still have access to all 
+the knobs and levers in case I want to change somethings to a very specific thing as I 
+experiment with the system.
+
+In terms of development, I want this to be on CI/CD, so I can prototype quickly and 
+improve as I feel the need until I basically tune the system to perfectly fit my needs.
+Traffic and performance should not be an issue, since I am the sole user. 
+An interesting functionality down the line would be working together with other 
+people for joint tasks. 
+
+Minimum Viable Product I believe interfaces with Google Calendar, coz that's the only
+reasonable I actually use it, though I could use a terminal UI for quick testing (tho that could be a pain to implement).
+
+Development roadmap:
+
+- Version 0.0: Core Task Management
+  - Simple CLI interface for basic operations
+  - Core features:
+    - Add tasks with:
+      - Title
+      - Duration estimate
+      - Due date
+    - List all tasks
+    - Mark tasks as complete
+    - Basic JSON file storage (no database needed yet)
+    - Simple weekly time window configuration (e.g., "Monday 9-5, Tuesday 10-6")
+    - Basic scheduling algorithm that:
+      - Assigns tasks to available time slots
+      - Respects due dates
+      - Outputs a basic daily schedule
+
+Version 0.1: Google Calendar integration
+Version 0.2: Recurring tasks
+Version 0.3: Notification system
+Version 0.4: AI assistance for task estimation
+Version 1.0: More sophisticated scheduling
