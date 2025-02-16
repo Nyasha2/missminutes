@@ -23,23 +23,23 @@ class BasicScheduler:
 
     def schedule_tasks(
         self,
-        new_tasks: List[Task],
-        start_date: date,
+        tasks: List[Task],
+        start_datetime: datetime,
         existing_scheduled_tasks: List[ScheduledTask] = None,
     ) -> List[ScheduledTask]:
         """
-        Schedule tasks into available time windows starting from the given date.
+        Schedule tasks into available time windows starting from the given datetime.
         Takes into account any existing scheduled tasks to avoid conflicts.
         Returns a list of all scheduled tasks (both new and existing).
         """
         existing_scheduled_tasks = existing_scheduled_tasks or []
 
         # Filter out completed tasks and sort by due date
-        pending_tasks = [t for t in new_tasks if not t.completed]
+        pending_tasks = [t for t in tasks if not t.completed]
         pending_tasks.sort(key=lambda t: t.due_date)
 
         all_scheduled_tasks = existing_scheduled_tasks.copy()
-        current_date = start_date
+        current_date = start_datetime.date()
 
         while pending_tasks:
             # Get time windows for the current day
@@ -50,65 +50,45 @@ class BasicScheduler:
                 current_date += timedelta(days=1)
                 continue
 
-            # Get existing tasks for this day
-            days_scheduled_tasks = [
-                st
-                for st in existing_scheduled_tasks
-                if st.start_time.date() == current_date
-            ]
-
             # Try to schedule tasks in each window of the current day
             tasks_scheduled_today = False
             for window in day_windows:
-                current_time = datetime.combine(current_date, window.start_time)
+                # If it's the start date, use start_datetime's time if it's later
+                if current_date == start_datetime.date():
+                    if start_datetime.time() > window.end_time:
+                        # This window has already passed
+                        continue
+                    window_start_time = max(start_datetime.time(), window.start_time)
+                else:
+                    window_start_time = window.start_time
+
+                current_time = datetime.combine(current_date, window_start_time)
                 window_end = datetime.combine(current_date, window.end_time)
 
-                # Try to fit tasks into this window
                 while pending_tasks and current_time < window_end:
                     task = pending_tasks[0]
                     task_end_time = current_time + task.duration
 
-                    # Check if task fits in current window
                     if task_end_time <= window_end:
-                        # Check for conflicts with existing scheduled tasks
-                        conflict = False
-                        for scheduled_task in days_scheduled_tasks:
-                            if (
-                                current_time < scheduled_task.end_time
-                                and task_end_time > scheduled_task.start_time
-                            ):
-                                # Found a conflict, try the next available time
-                                current_time = scheduled_task.end_time
-                                conflict = True
-                                break
-
-                        if conflict:
-                            continue
-
-                        # Check if scheduling would meet due date
                         if task_end_time <= task.due_date:
-                            new_scheduled_task = ScheduledTask(
-                                task=task,
-                                start_time=current_time,
-                                end_time=task_end_time,
+                            all_scheduled_tasks.append(
+                                ScheduledTask(
+                                    task=task,
+                                    start_time=current_time,
+                                    end_time=task_end_time,
+                                )
                             )
-                            all_scheduled_tasks.append(new_scheduled_task)
-                            days_scheduled_tasks.append(new_scheduled_task)
                             pending_tasks.pop(0)
                             tasks_scheduled_today = True
                             current_time = task_end_time
                         else:
-                            # Task can't be scheduled to meet its due date
                             raise SchedulingError(
-                                f"Cannot schedule task '{task.title}' before its due date"
+                                f"Cannot schedule task '{task.title}' before its due date."
                             )
                     else:
-                        # Task doesn't fit in remaining window time
                         break
 
             if not tasks_scheduled_today and pending_tasks:
-                # If we couldn't schedule any tasks today but still have tasks,
-                # check if we're about to miss any due dates
                 next_day = current_date + timedelta(days=1)
                 if any(task.due_date.date() < next_day for task in pending_tasks):
                     raise SchedulingError(

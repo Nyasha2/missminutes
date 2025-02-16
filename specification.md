@@ -106,6 +106,16 @@ In the next version, I need to improve on the first-fit algorithm.
 Also, question: how do i resolve conflicts in windows, can the exercise window
 have the same time availability as the work window? i think it should. 
 
+In the CLI, when adding tasks, if only a time is given, assume it is for today.
+Furthering on this, we will probably need to implement sophisticated parsing for
+relative dates and times.
+
+For the assistant to work best, there is going to be a need to understand
+task nature and a memory of previous tasks, to build a routine and create
+natural schedules that are actually pleasant to work in. Like a great
+executive assistant would. So set up in this world would take some time, for 
+the system to understand me, and then learn patterns as it's used.
+
 Version 0.1: Google Calendar integration
 Version 0.2: Recurring tasks
     - A README.md file (finally)

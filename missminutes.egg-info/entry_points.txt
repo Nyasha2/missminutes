@@ -1,0 +1,2 @@
+[console_scripts]
+minutes_cui = missminutes.minutes_cui:main

@@ -1,11 +1,14 @@
 import cmd
 from datetime import datetime, date, timedelta
 from typing import Optional
+import shlex
 
 from .storage.json_store import JsonStore
 from .models.task import Task
 from .models.time_window import DayOfWeek, TimeWindow
 from .scheduler.basic_scheduler import BasicScheduler, SchedulingError
+from .services.task_service import TaskService, TaskSchedulingError
+from .services.window_service import TimeWindowService, TimeWindowError
 
 
 class MinutesCUI(cmd.Cmd):
@@ -14,19 +17,18 @@ class MinutesCUI(cmd.Cmd):
 
     def __init__(self):
         super().__init__()
-        self.store = JsonStore()
+        store = JsonStore()
+        self.store = store
         self.scheduler = BasicScheduler(self.store.load_schedule())
+        self.task_service = TaskService(store)
+        self.window_service = TimeWindowService(store)
 
     def do_add(self, arg):
         """Add a new task. Usage: add "Task title" duration due_date
         Example: add "Write documentation" 2.5 "2024-03-20 17:00"
         """
         try:
-            # Basic parsing - split by space but respect quoted strings
-            import shlex
-
             parts = shlex.split(arg)
-
             if len(parts) != 3:
                 print("Error: Incorrect number of arguments")
                 print('Usage: add "Task title" duration "YYYY-MM-DD HH:MM"')
@@ -36,24 +38,25 @@ class MinutesCUI(cmd.Cmd):
             duration_hours = float(duration_str)
             due_date = datetime.strptime(due_date_str, "%Y-%m-%d %H:%M")
 
-            task = Task(
-                title=title, duration=timedelta(hours=duration_hours), due_date=due_date
+            task, scheduling_error = self.task_service.add_task(
+                title, duration_hours, due_date
             )
 
-            tasks = self.store.load_tasks()
-            tasks.append(task)
-            self.store.save_tasks(tasks)
-
-            print(f"Added task: {title}")
-            self._schedule_tasks()
+            print(f"Added task: {task.title}")
+            if scheduling_error:
+                print(
+                    f"Warning: Task saved but could not be scheduled: {scheduling_error}"
+                )
+                print(
+                    "You may need to adjust the task parameters or available time windows."
+                )
 
         except ValueError as e:
-            print(f"Error: Invalid input format")
-            print('Usage: add "Task title" duration "YYYY-MM-DD HH:MM"')
+            print(f"Error: Invalid input format - {str(e)}")
 
     def do_list(self, arg):
         """List all tasks."""
-        tasks = self.store.load_tasks()
+        tasks = self.task_service.get_all_tasks()
         if not tasks:
             print("No tasks found.")
             return
@@ -178,8 +181,10 @@ class MinutesCUI(cmd.Cmd):
         """Internal method to schedule all incomplete tasks."""
         try:
             tasks = self.store.load_tasks()
+            # Refresh scheduler with latest schedule
+            self.scheduler = BasicScheduler(self.store.load_schedule())
             scheduled = self.scheduler.schedule_tasks(
-                tasks, start_date=date.today(), existing_scheduled_tasks=[]
+                tasks, start_datetime=datetime.now(), existing_scheduled_tasks=[]
             )
             self.store.save_scheduled_tasks(scheduled)
         except SchedulingError as e:

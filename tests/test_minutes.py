@@ -5,10 +5,10 @@ import json
 import tempfile
 import shutil
 
-from src.models.task import Task
-from src.models.time_window import TimeWindow, WeeklySchedule, DayOfWeek
-from src.storage.json_store import JsonStore
-from src.scheduler.basic_scheduler import BasicScheduler, ScheduledTask, SchedulingError
+from missminutes.models.task import Task
+from missminutes.models.time_window import TimeWindow, WeeklySchedule, DayOfWeek
+from missminutes.storage.json_store import JsonStore
+from missminutes.scheduler.basic_scheduler import BasicScheduler, ScheduledTask, SchedulingError
 
 
 class TestMinutes(unittest.TestCase):
