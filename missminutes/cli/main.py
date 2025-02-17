@@ -9,6 +9,8 @@ from ..models.time_window import DayOfWeek, TimeWindow
 from ..scheduler.basic_scheduler import BasicScheduler, SchedulingError
 from ..services.task_service import TaskService, TaskSchedulingError
 from ..services.window_service import TimeWindowService, TimeWindowError
+from .datetime_parser import DateTimeParser
+from .duration_parser import DurationParser
 
 
 class MinutesCUI(cmd.Cmd):
@@ -22,27 +24,39 @@ class MinutesCUI(cmd.Cmd):
         self.scheduler = BasicScheduler(self.store.load_schedule())
         self.task_service = TaskService()
         self.window_service = TimeWindowService(store)
+        self.datetime_parser = DateTimeParser()
+        self.duration_parser = DurationParser()
 
     def do_add(self, arg):
         """Add a new task. Usage: add "Task title" duration due_date
-        Example: add "Write documentation" 2.5 "2024-03-20 17:00"
+        Examples:
+            add "Write documentation" 2.5h "2024-03-20 17:00"
+            add "Team meeting" 1hr "14:30"              # today at 14:30
+            add "Quick review" 30m "tomorrow 2pm"       # tomorrow at 14:00
+            add "Weekly sync" 1h30m "tomorrow 11:30"    # tomorrow at 11:30
+            add "Planning" "2 hours" "next week 10am"   # next week at 10:00
         """
         try:
             parts = shlex.split(arg)
             if len(parts) != 3:
                 print("Error: Incorrect number of arguments")
-                print('Usage: add "Task title" duration "YYYY-MM-DD HH:MM"')
+                print('Usage: add "Task title" duration due_date')
                 return
 
             title, duration_str, due_date_str = parts
-            duration_hours = float(duration_str)
-            due_date = datetime.strptime(due_date_str, "%Y-%m-%d %H:%M")
+
+            # Use flexible duration parsing
+            duration = self.duration_parser.parse(duration_str)
+            duration_hours = duration.total_seconds() / 3600
+
+            # Use flexible datetime parsing
+            due_date = self.datetime_parser.parse(due_date_str)
 
             task, scheduling_error = self.task_service.add_task(
                 title, duration_hours, due_date
             )
 
-            print(f"Added task: {task.title}")
+            print(f"Added task: {task.title} ({self.duration_parser.format(duration)})")
             if scheduling_error:
                 print(
                     f"Warning: Task saved but could not be scheduled: {scheduling_error}"
@@ -52,7 +66,7 @@ class MinutesCUI(cmd.Cmd):
                 )
 
         except ValueError as e:
-            print(f"Error: Invalid input format - {str(e)}")
+            print(f"Error: {str(e)}")
 
     def do_list(self, arg):
         """List all tasks."""
@@ -67,7 +81,7 @@ class MinutesCUI(cmd.Cmd):
             status = "✓" if task.completed else " "
             print(f"[{status}] {task.title}")
             print(f"    Due: {task.due_date.strftime('%Y-%m-%d %H:%M')}")
-            print(f"    Duration: {task.duration.total_seconds() / 3600:.1f} hours")
+            print(f"    Duration: {self.duration_parser.format(task.duration)}")
             print(f"    ID: {task.id}")
             print("-" * 60)
 
@@ -116,7 +130,7 @@ class MinutesCUI(cmd.Cmd):
                 f"{st.start_time.strftime('%H:%M')} - "
                 f"{st.end_time.strftime('%H:%M')}: {st.task.title}"
             )
-            print(f"    Duration: {st.task.duration.total_seconds() / 3600:.1f} hours")
+            print(f"    Duration: {self.duration_parser.format(st.task.duration)}")
             print("-" * 60)
 
     def do_window(self, arg):

@@ -126,27 +126,16 @@ Version 1.0: More sophisticated scheduling
 (Spec)
 
 - Version 0.2: Google Calendar Integration and Better Task Management
-  - Task Management Improvements:
-    - Edit existing tasks (name, due date)
-    - Delete tasks
-    - View task history
-    - Better date/time input parsing
-    - Improved error messages
-    - Task completion timestamps
-  - Enhanced CLI commands:
-    - Editing and deleting tasks
-    - Logging/completing tasks
-    - Showing detailed task info
-    - Showing completed and incomplete tasks
-    - Showing today's tasks
-    - Showing this week's tasks
-    - Force calendar sync
-  - Improved Google Calendar Integration:
+  - Google Calendar Integration:
     - Two-way sync between tasks and calendar
-    - Update calendar when tasks are modified
-    - Delete calendar events when tasks are deleted
+    - Update calendar when tasks are added, modified, or deleted
     - Sync task completion status with calendar
     - Better error handling for calendar operations
-    - Calendar configuration options:
-      - Calendar selection
-      - Sync frequency
+  - Task Management Improvements:
+    - Better date/time input parsing
+    - Edit existing tasks (name, due date)
+    - Delete tasks
+    - CLI commands:
+      - Editing and deleting tasks
+      - Logging/completing tasks
+      - schedule command flag (today, this week)

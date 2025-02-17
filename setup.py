@@ -17,5 +17,6 @@ setup(
         "rich",
         "python-dateutil",
         "tzlocal",
+        "pytz",
     ],
 )

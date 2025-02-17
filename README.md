@@ -9,10 +9,10 @@ A task management and scheduling system designed to reduce decision fatigue arou
 - Automatic scheduling of tasks into available time slots
 - Basic task listing and completion tracking
 - Simple JSON storage
+- Google Calendar integration
 
 ## Upcoming Features
 
-- Google Calendar integration
 - Recurring task support
 - Smart notifications
 - Assisted task estimation
@@ -27,7 +27,3 @@ Miss Minutes aims to handle the cognitive load of deciding when to do tasks. Use
 3. Follow the generated schedule
 
 The system automatically handles scheduling tasks into appropriate time slots while respecting deadlines and time constraints.
-
-## Usage
-
-Currently supports basic CLI commands for task management:
