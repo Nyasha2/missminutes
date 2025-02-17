@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 import uuid
-
+from typing import Optional
 
 @dataclass
 class Task:
@@ -12,6 +12,7 @@ class Task:
     due_date: datetime
     completed: bool = False
     id: str = None  # UUID string
+    calendar_event_id: Optional[str] = None
 
     def __post_init__(self):
         if self.id is None:

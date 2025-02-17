@@ -2,7 +2,6 @@ LICENSE
 README.md
 setup.py
 missminutes/__init__.py
-missminutes/minutes_cui.py
 missminutes.egg-info/PKG-INFO
 missminutes.egg-info/SOURCES.txt
 missminutes.egg-info/dependency_links.txt

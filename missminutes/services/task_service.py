@@ -5,13 +5,15 @@ from ..models.task import Task
 from ..models.time_window import WeeklySchedule
 from ..storage.json_store import JsonStore
 from ..scheduler.basic_scheduler import BasicScheduler, ScheduledTask, SchedulingError
+from .calendar_service import CalendarService
 
 
 class TaskService:
     """Service layer for managing tasks and scheduling."""
 
-    def __init__(self, store: JsonStore):
-        self.store = store
+    def __init__(self):
+        self.store = JsonStore()
+        self.calendar = CalendarService()
         self._scheduler = None  # Lazy load scheduler
 
     @property
@@ -20,6 +22,41 @@ class TaskService:
         if self._scheduler is None:
             self._scheduler = BasicScheduler(self.store.load_schedule())
         return self._scheduler
+
+    def complete_task(self, task_id):
+        """Mark a task as complete and update/remove calendar event"""
+        task = self.store.get(task_id)
+        if task:
+            task.completed = True
+            task.completed_at = datetime.now().isoformat()
+
+            self.store.save(task_id, task)
+            return True
+        return False
+
+    def delete_task(self, task_id):
+        """Delete a task and its calendar event"""
+        task = self.store.get(task_id)
+        if task and task.calendar_event_id:
+            self.calendar.delete_event(task.calendar_event_id)
+        return self.store.delete(task_id)
+
+    def sync_calendar(self):
+        """Force sync between tasks and calendar"""
+        events = self.calendar.get_all_events()
+        synced = 0
+
+        # Create event_id to task_id mapping
+        for event in events:
+            if "extendedProperties" in event:
+                task_id = event["extendedProperties"]["private"]["task_id"]
+                task = self.store.get(task_id)
+                if task and not task.calendar_event_id:
+                    task.calendar_event_id = event["id"]
+                    self.store.save(task_id, task)
+                    synced += 1
+
+        return synced
 
     def add_task(
         self, title: str, duration_hours: float, due_date: datetime
@@ -38,7 +75,7 @@ class TaskService:
         tasks.append(task)
         self.store.save_tasks(tasks)
 
-        # Attempt to schedule - but don't fail if scheduling fails
+        # Attempt to schedule
         scheduling_error = None
         try:
             self._schedule_tasks()
@@ -82,23 +119,6 @@ class TaskService:
 
         return task_to_update, scheduling_error
 
-    def complete_task(self, task_id: str) -> Optional[Task]:
-        """Mark a task as complete and reschedule remaining tasks."""
-        tasks = self.store.load_tasks()
-        completed_task = None
-
-        for task in tasks:
-            if task.id == task_id:
-                task.mark_complete()
-                completed_task = task
-                break
-
-        if completed_task:
-            self.store.save_tasks(tasks)
-            self._schedule_tasks()
-
-        return completed_task
-
     def get_all_tasks(self) -> List[Task]:
         """Get all tasks."""
         return self.store.load_tasks()
@@ -113,14 +133,43 @@ class TaskService:
         ]
 
     def _schedule_tasks(self):
-        """Internal method to schedule all incomplete tasks."""
+        """Internal method to schedule all incomplete tasks and sync with calendar."""
         try:
-            tasks = self.store.load_tasks()
+            tasks = self.store.get_all_todo_tasks()
             # Reset scheduler to get fresh schedule
             self._scheduler = None
             scheduled = self.scheduler.schedule_tasks(
                 tasks, start_datetime=datetime.now(), existing_scheduled_tasks=[]
             )
+
+            # First, remove any existing calendar events for tasks that are no longer scheduled
+            all_tasks = self.store.load_tasks()
+            for task in all_tasks:
+                if task.calendar_event_id and not any(
+                    st.task.id == task.id for st in scheduled
+                ):
+                    self.calendar.delete_event(task.calendar_event_id)
+                    task.calendar_event_id = None
+
+            # Then update/create calendar events only for scheduled tasks
+            for scheduled_task in scheduled:
+                task = scheduled_task.task
+                if task.calendar_event_id:
+                    # Update existing event with new scheduled time
+                    self.calendar.update_event(
+                        task.calendar_event_id,
+                        task,
+                        scheduled_time=scheduled_task.start_time,
+                    )
+                else:
+                    # Create new event with scheduled time
+                    event_id = self.calendar.create_event(
+                        task, scheduled_time=scheduled_task.start_time
+                    )
+                    if event_id:
+                        task.calendar_event_id = event_id
+
+            self.store.save_tasks(tasks)
             self.store.save_scheduled_tasks(scheduled)
         except SchedulingError as e:
             raise TaskSchedulingError(str(e))

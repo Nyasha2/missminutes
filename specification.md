@@ -117,8 +117,36 @@ executive assistant would. So set up in this world would take some time, for
 the system to understand me, and then learn patterns as it's used.
 
 Version 0.1: Google Calendar integration
-Version 0.2: Recurring tasks
+Version 0.2: Recurring tasks and Improved Task Organization
     - A README.md file (finally)
 Version 0.3: Notification system
 Version 0.4: AI assistance for task estimation
 Version 1.0: More sophisticated scheduling
+
+(Spec)
+
+- Version 0.2: Google Calendar Integration and Better Task Management
+  - Task Management Improvements:
+    - Edit existing tasks (name, due date)
+    - Delete tasks
+    - View task history
+    - Better date/time input parsing
+    - Improved error messages
+    - Task completion timestamps
+  - Enhanced CLI commands:
+    - Editing and deleting tasks
+    - Logging/completing tasks
+    - Showing detailed task info
+    - Showing completed and incomplete tasks
+    - Showing today's tasks
+    - Showing this week's tasks
+    - Force calendar sync
+  - Improved Google Calendar Integration:
+    - Two-way sync between tasks and calendar
+    - Update calendar when tasks are modified
+    - Delete calendar events when tasks are deleted
+    - Sync task completion status with calendar
+    - Better error handling for calendar operations
+    - Calendar configuration options:
+      - Calendar selection
+      - Sync frequency

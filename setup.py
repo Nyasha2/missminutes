@@ -6,10 +6,16 @@ setup(
     packages=find_packages(),
     entry_points={
         "console_scripts": [
-            "minutes_cui=missminutes.minutes_cui:main",
+            "minutes_cui=missminutes.cli.main:main",
         ],
     },
     install_requires=[
-        # Add your dependencies here
+        "google-auth-oauthlib",
+        "google-auth-httplib2",
+        "google-api-python-client",
+        "click",
+        "rich",
+        "python-dateutil",
+        "tzlocal",
     ],
 )

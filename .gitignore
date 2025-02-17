@@ -1,2 +1,6 @@
 venv
-minutes_cui.egg-info
+data/
+missminutes.egg-info/
+__pycache__/
+*/__pycache__/
+**/__pycache__/

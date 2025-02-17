@@ -1,37 +1,9 @@
 [
   {
-    "id": "7d0885e3-888b-4a7d-881b-7290e9bbd8ec",
-    "title": "lunch",
-    "duration_seconds": 3600.0,
-    "due_date": "2025-02-16T14:30:00",
-    "completed": false
-  },
-  {
-    "id": "fed4c342-d771-4bbc-aa03-8dd664628a20",
-    "title": "lunch",
-    "duration_seconds": 3600.0,
-    "due_date": "2025-02-16T14:30:00",
-    "completed": false
-  },
-  {
-    "id": "337044d1-bd46-4ada-9a60-85f83d588205",
-    "title": "lunch",
-    "duration_seconds": 3600.0,
-    "due_date": "2025-02-16T14:30:00",
-    "completed": false
-  },
-  {
-    "id": "2e7571fe-ea31-4b97-9303-373a88123c68",
-    "title": "lunch",
-    "duration_seconds": 3600.0,
-    "due_date": "2025-02-16T14:30:00",
-    "completed": false
-  },
-  {
-    "id": "fe0ce875-0beb-4082-a4a7-f84e260155c2",
-    "title": "lunch",
-    "duration_seconds": 3600.0,
-    "due_date": "2025-02-16T14:30:00",
+    "id": "087d6d3c-6cb5-4838-a2b6-b2084d2327c9",
+    "title": "Test task",
+    "duration_seconds": 5400.0,
+    "due_date": "2025-02-17T15:00:00",
     "completed": false
   }
 ]

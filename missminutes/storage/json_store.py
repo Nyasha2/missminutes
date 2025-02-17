@@ -24,6 +24,7 @@ class JsonStore:
 
     def save_tasks(self, tasks: List[Task]):
         """Save tasks to JSON file."""
+        print(f"Saving tasks to {self.tasks_file}")
         tasks_data = [
             {
                 "id": task.id,
@@ -130,3 +131,16 @@ class JsonStore:
                 )
 
         return scheduled_tasks
+
+    def get_all_todo_tasks(self) -> List[Task]:
+        """Get all tasks due in the future that are not completed."""
+        return [
+            task
+            for task in self.load_tasks()
+            if not task.completed and task.due_date > datetime.now()
+        ]
+
+    def store(self, task_id, task):
+        """Store a task in the store."""
+        self.save_tasks([task])
+    
