@@ -18,5 +18,6 @@ setup(
         "python-dateutil",
         "tzlocal",
         "pytz",
+        "prompt_toolkit",
     ],
 )

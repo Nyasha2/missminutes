@@ -125,7 +125,8 @@ class BasicScheduler:
                     )
 
                     # Check if we've passed the due date
-                    if task.due_date and current_slot.date() > task.due_date:
+                    # Convert both to date objects for comparison
+                    if task.due_date and current_slot.date() > task.due_date.date():
                         raise SchedulingError(
                             f"Unable to schedule task '{task.title}' before its due date"
                         )
