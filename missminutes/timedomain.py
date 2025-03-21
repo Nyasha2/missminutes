@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
-from typing import Optional, List, Tuple, Dict
 from dataclasses import dataclass, field
-import uuid
 import copy
 
 from .timeprofile import DayOfWeek, TimeProfile
@@ -28,7 +26,7 @@ class TimeSlot:
 @dataclass
 class TimeDomain:
     """A collection of available time slots within a scheduling period"""
-    time_slots: List[TimeSlot] = field(default_factory=list)
+    time_slots: list[TimeSlot] = field(default_factory=list)
     
     def add_slot(self, start: datetime, end: datetime) -> None:
         """Add a time slot to the map"""
@@ -38,11 +36,11 @@ class TimeDomain:
         """Remove a specific slot from the map"""
         self.time_slots.remove(slot)
     
-    def get_available_slots(self, min_duration: timedelta) -> List[TimeSlot]:
+    def get_available_slots(self, min_duration: timedelta) -> list[TimeSlot]:
         """Get all slots with at least the specified duration"""
         return [slot for slot in self.time_slots if slot.duration >= min_duration]
     
-    def find_conflicts(self, other: 'TimeDomain') -> List[Tuple[TimeSlot, TimeSlot]]:
+    def find_conflicts(self, other: 'TimeDomain') -> list[tuple[TimeSlot, TimeSlot]]:
         """Find conflicts between this map and another"""
         conflicts = []
         for slot1 in self.time_slots:

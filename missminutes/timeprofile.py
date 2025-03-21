@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from datetime import datetime
 import uuid
+
 class DayOfWeek(Enum):
     """Days of the week"""
     MONDAY = 0

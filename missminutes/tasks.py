@@ -1,11 +1,12 @@
 from datetime import datetime, timedelta
-from typing import Optional, Any
+from typing import Optional, Any, Union
 from dataclasses import dataclass, field
 import uuid
 from enum import Enum
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
 from .timedomain import TimeDomain
 from .timeprofile import TimeProfile
+from .events import Event
 
 class RecurrencePattern(Enum):
     """Types of task recurrence"""
@@ -23,6 +24,9 @@ class DependencyType(Enum):
     CONTAINS = "contains"  # This task is a parent task of the dependent
     CONCURRENT = "concurrent"  # This task runs concurrently with the dependent 
 
+# Forward reference for type checking
+Entity = Union['Task', 'Event']  # Either a Task or an Event
+
 @dataclass
 class Task:
     """A task that needs to be scheduled"""
@@ -37,12 +41,11 @@ class Task:
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
     parent_id: Optional[str] = None
     subtask_ids: set[str] = field(default_factory=set)
-    tags: set[str] = field(default_factory=set)
     
     # Scheduling constraints
     time_profiles: list['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
-    dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Task ID -> dependency type
-    dependents: dict[str, DependencyType] = field(default_factory=dict)    # Task ID -> dependency type
+    dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Entity ID -> dependency type
+    dependents: dict[str, DependencyType] = field(default_factory=dict)    # Entity ID -> dependency type
     min_session_length: Optional[timedelta] = None
     max_session_length: Optional[timedelta] = None
     buffer_before: timedelta = field(default_factory=lambda: timedelta(minutes=0))
@@ -53,24 +56,31 @@ class Task:
     completed: bool = False
     completed_at: Optional[datetime] = None
     time_spent: timedelta = field(default_factory=lambda: timedelta())
-    sessions: list[str] = field(default_factory=list)  # Session IDs
+    sessions: list[str] = field(default_factory=list)
     
-    def add_dependency(self, dependency: 'Task', dep_type: DependencyType = DependencyType.BEFORE):
-        """Add a dependency relationship with specified type"""
-        self.dependencies[dependency.id] = dep_type
-        # Add inverse relationship to the dependency
-        match dep_type:
-            case DependencyType.BEFORE:
-                inverse_type = DependencyType.AFTER
-            case DependencyType.AFTER:
-                inverse_type = DependencyType.BEFORE
-            case DependencyType.DURING:
-                inverse_type = DependencyType.CONTAINS
-            case DependencyType.CONTAINS:
-                inverse_type = DependencyType.DURING
-            case DependencyType.CONCURRENT:
-                inverse_type = DependencyType.CONCURRENT
-        dependency.dependents[self.id] = inverse_type
+    def add_dependency(self, entity: Entity, dep_type: DependencyType = DependencyType.BEFORE):
+        """
+        Add a dependency relationship with specified type
+        
+        The entity can be either a Task or an Event
+        """
+        self.dependencies[entity.id] = dep_type
+        
+        # Add inverse relationship to the dependency if it's a Task
+        # Events don't track dependents
+        if hasattr(entity, 'dependents'):
+            match dep_type:
+                case DependencyType.BEFORE:
+                    inverse_type = DependencyType.AFTER
+                case DependencyType.AFTER:
+                    inverse_type = DependencyType.BEFORE
+                case DependencyType.DURING:
+                    inverse_type = DependencyType.CONTAINS
+                case DependencyType.CONTAINS:
+                    inverse_type = DependencyType.DURING
+                case DependencyType.CONCURRENT:
+                    inverse_type = DependencyType.CONCURRENT
+            entity.dependents[self.id] = inverse_type
 
     def add_subtask(self, subtask: 'Task'):
         """Add a subtask and update relationships"""
@@ -116,12 +126,10 @@ class Task:
         # Start with all time available
         result = TimeDomain()
         
-        # Create default time slots for each day
-        for day_offset in range(days):
-            current_date = start_date + timedelta(days=day_offset)
-            day_start = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
-            day_end = current_date.replace(hour=23, minute=59, second=59, microsecond=999999)
-            result.add_slot(day_start, day_end)
+        # Create a single time slot from start to end date
+        period_start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        period_end = (start_date + timedelta(days=days)).replace(hour=23, minute=59, second=59, microsecond=999999)
+        result.add_slot(period_start, period_end)
         
         # Apply task start constraint if specified
         if self.starts_at and self.starts_at > start_date:
@@ -156,7 +164,7 @@ class RecurringTask(Task):
     """A task that recurs according to a schedule"""
     # Recurrence specific fields
     recurrence_pattern: Optional[RecurrencePattern] = None
-    recurrence_config: list[str, Any] = field(default_factory=dict)
+    recurrence_config: dict[str, Any] = field(default_factory=dict)
     recurrence_rule: Optional[rrule] = None  # dateutil rrule for recurrence
     recurrence_start: Optional[datetime] = None  # When recurrence starts
     recurrence_until: Optional[datetime] = None  # When recurrence ends
@@ -190,14 +198,15 @@ class RecurringTask(Task):
         
         # Create the appropriate rrule based on pattern
         freq = None
-        if pattern == RecurrencePattern.DAILY:
-            freq = DAILY
-        elif pattern == RecurrencePattern.WEEKLY:
-            freq = WEEKLY
-        elif pattern == RecurrencePattern.MONTHLY:
-            freq = MONTHLY
-        elif pattern == RecurrencePattern.YEARLY:
-            freq = YEARLY
+        match pattern:
+            case RecurrencePattern.DAILY:
+                freq = DAILY
+            case RecurrencePattern.WEEKLY:
+                freq = WEEKLY
+            case RecurrencePattern.MONTHLY:
+                freq = MONTHLY
+            case RecurrencePattern.YEARLY:
+                freq = YEARLY
         
         # Convert weekday integers to dateutil constants if provided
         weekday_map = {0: MO, 1: TU, 2: WE, 3: TH, 4: FR, 5: SA, 6: SU}
@@ -282,7 +291,6 @@ class RecurringTask(Task):
             id=task.id,  # Keep the same ID
             parent_id=task.parent_id,
             subtask_ids=task.subtask_ids.copy(),
-            tags=task.tags.copy(),
             time_profiles=task.time_profiles.copy(),
             dependencies=task.dependencies.copy(),
             dependents=task.dependents.copy(),
