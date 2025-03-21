@@ -4,16 +4,8 @@ from dataclasses import dataclass, field
 import uuid
 from enum import Enum
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
-
-class DayOfWeek(Enum):
-    """Days of the week"""
-    MONDAY = 0
-    TUESDAY = 1
-    WEDNESDAY = 2
-    THURSDAY = 3
-    FRIDAY = 4
-    SATURDAY = 5
-    SUNDAY = 6
+from .timedomain import TimeDomain
+from .timeprofile import TimeProfile
 
 class RecurrencePattern(Enum):
     """Types of task recurrence"""
@@ -32,89 +24,6 @@ class DependencyType(Enum):
     CONCURRENT = "concurrent"  # This task runs concurrently with the dependent 
 
 @dataclass
-class TimeWindow:
-    """A specific time window within a day"""
-    start_hour: int  # 0-23
-    start_minute: int  # 0-59
-    end_hour: int  # 0-23
-    end_minute: int  # 0-59
-    
-    def __post_init__(self):
-        """Validate time values"""
-        if not (0 <= self.start_hour <= 23):
-            raise ValueError("Start hour must be between 0 and 23")
-        if not (0 <= self.start_minute <= 59):
-            raise ValueError("Start minute must be between 0 and 59")
-        if not (0 <= self.end_hour <= 23):
-            raise ValueError("End hour must be between 0 and 23")
-        if not (0 <= self.end_minute <= 59):
-            raise ValueError("End minute must be between 0 and 59")
-        
-        # Check that end time is after start time
-        start_time = self.start_hour * 60 + self.start_minute
-        end_time = self.end_hour * 60 + self.end_minute
-        if end_time <= start_time:
-            raise ValueError("End time must be after start time")
-    
-    def contains_time(self, hour: int, minute: int) -> bool:
-        """Check if the given time falls within this window"""
-        time_val = hour * 60 + minute
-        start_val = self.start_hour * 60 + self.start_minute
-        end_val = self.end_hour * 60 + self.end_minute
-        return start_val <= time_val < end_val
-
-@dataclass
-class DaySchedule:
-    """Schedule windows for a specific day"""
-    day: DayOfWeek
-    time_windows: list[TimeWindow] = field(default_factory=list)
-    
-    def add_window(self, start_hour: int, start_minute: int, end_hour: int, end_minute: int):
-        """Add a time window to this day's schedule"""
-        window = TimeWindow(start_hour, start_minute, end_hour, end_minute)
-        self.time_windows.append(window)
-        return window
-    
-    def is_available_at(self, hour: int, minute: int) -> bool:
-        """Check if any time window contains the given time"""
-        return any(window.contains_time(hour, minute) for window in self.time_windows)
-
-@dataclass
-class TimeProfile:
-    """A named profile containing scheduling preferences for each day of the week"""
-    name: str
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    day_schedules: dict[DayOfWeek, DaySchedule] = field(default_factory=dict)
-    
-    def __post_init__(self):
-        """Initialize empty day schedules for any missing days"""
-        for day in DayOfWeek:
-            if day not in self.day_schedules:
-                self.day_schedules[day] = DaySchedule(day)
-    
-    def add_window(self, day: DayOfWeek, start_hour: int, start_minute: int, 
-                  end_hour: int, end_minute: int) -> TimeWindow:
-        """Add a time window to a specific day"""
-        return self.day_schedules[day].add_window(
-            start_hour, start_minute, end_hour, end_minute
-        )
-    
-    def add_window_to_days(self, days: list[DayOfWeek], start_hour: int, start_minute: int,
-                          end_hour: int, end_minute: int) -> list[TimeWindow]:
-        """Add the same time window to multiple days"""
-        return [self.add_window(day, start_hour, start_minute, end_hour, end_minute)
-                for day in days]
-    
-    def is_available_at(self, day: DayOfWeek, hour: int, minute: int) -> bool:
-        """Check if this profile allows scheduling at the given day and time"""
-        return self.day_schedules[day].is_available_at(hour, minute)
-    
-    def is_datetime_available(self, dt: datetime) -> bool:
-        """Check if a specific datetime is available in this profile"""
-        day = DayOfWeek(dt.weekday())
-        return self.is_available_at(day, dt.hour, dt.minute)
-
-@dataclass
 class Task:
     """A task that needs to be scheduled"""
     # Basic info
@@ -122,6 +31,7 @@ class Task:
     description: Optional[str] = None
     duration: timedelta = field(default_factory=lambda: timedelta(hours=1))
     due: Optional[datetime] = None
+    starts_at: Optional[datetime] = None
     
     # Organization
     id: str = field(default_factory=lambda: str(uuid.uuid4()))
@@ -130,7 +40,7 @@ class Task:
     tags: set[str] = field(default_factory=set)
     
     # Scheduling constraints
-    time_profiles: set[tuple[str, str]] = field(default_factory=set)  # set of time profile references (name, id)
+    time_profiles: list['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
     dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Task ID -> dependency type
     dependents: dict[str, DependencyType] = field(default_factory=dict)    # Task ID -> dependency type
     min_session_length: Optional[timedelta] = None
@@ -169,15 +79,15 @@ class Task:
         # Also add as a DURING dependency
         self.add_dependency(subtask, DependencyType.DURING)
 
-    def assign_time_profile(self, profile_ref: tuple[str, str]):
+    def assign_time_profile(self, profile: 'TimeProfile'):
         """Assign a time profile to this task"""
-        if profile_ref not in self.time_profiles:
-            self.time_profiles.append(profile_ref)
+        if profile not in self.time_profiles:
+            self.time_profiles.append(profile)
 
-    def remove_time_profile(self, profile_ref: tuple[str, str]):
+    def remove_time_profile(self, profile: 'TimeProfile'):
         """Remove a time profile from this task"""
-        if profile_ref in self.time_profiles:
-            self.time_profiles.remove(profile_ref)
+        if profile in self.time_profiles:
+            self.time_profiles.remove(profile)
 
     def get_remaining_duration(self) -> timedelta:
         """Get remaining duration accounting for time spent"""
@@ -200,6 +110,46 @@ class Task:
     def total_duration(self) -> timedelta:
         """Get total duration including buffers"""
         return self.duration + self.buffer_before + self.buffer_after
+
+    def project_time_domain(self, start_date: datetime, days: int = 7) -> TimeDomain:
+        """Project this task's constraints as a TimeDomain"""
+        # Start with all time available
+        result = TimeDomain()
+        
+        # Create default time slots for each day
+        for day_offset in range(days):
+            current_date = start_date + timedelta(days=day_offset)
+            day_start = current_date.replace(hour=0, minute=0, second=0, microsecond=0)
+            day_end = current_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+            result.add_slot(day_start, day_end)
+        
+        # Apply task start constraint if specified
+        if self.starts_at and self.starts_at > start_date:
+            # Zero out any time slots before starts_at
+            cutoff_domain = TimeDomain()
+            cutoff_domain.add_slot(self.starts_at, start_date + timedelta(days=days))
+            result = result.apply_constraint(cutoff_domain)
+        
+        # Apply time profiles if any        
+        if self.time_profiles:
+            # Get time profiles and apply them as constraints
+            profile_domains = []
+            for profile in self.time_profiles:
+                profile_domain = TimeDomain.from_time_profile(profile, start_date, days)
+                profile_domains.append(profile_domain)
+            
+            # If we have profile maps, start with the first and intersect with others
+            if profile_domains:
+                result = profile_domains[0]
+                for profile_domain in profile_domains[1:]:
+                    result = result.apply_constraint(profile_domain)
+        
+        # Apply dependency constraints
+        # This would be more complex in practice, as you'd need to check each dependency
+        # type and how it affects scheduling
+        
+        # Return the resulting time map with all constraints applied
+        return result
 
 @dataclass
 class RecurringTask(Task):
@@ -328,6 +278,7 @@ class RecurringTask(Task):
             description=task.description,
             duration=task.duration,
             due=task.due,
+            starts_at=task.starts_at,
             id=task.id,  # Keep the same ID
             parent_id=task.parent_id,
             subtask_ids=task.subtask_ids.copy(),
