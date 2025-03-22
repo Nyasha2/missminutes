@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import copy
+from typing import Optional
 
 from .timeprofile import DayOfWeek, TimeProfile
 
@@ -138,3 +139,94 @@ class TimeDomain:
     def total_available_time(self) -> timedelta:
         """Calculate the total available time in this map"""
         return sum((slot.duration for slot in self.time_slots), timedelta())
+    
+    def __str__(self) -> str:
+        """Return a string representation of the TimeDomain"""
+        if not self.time_slots:
+            return "Empty TimeDomain"
+        
+        slots_str = "\n".join([f"  {slot.start.strftime('%Y-%m-%d %H:%M')} - {slot.end.strftime('%Y-%m-%d %H:%M')}" for slot in self.time_slots])
+        return f"TimeDomain with {len(self.time_slots)} slots:\n{slots_str}"
+    
+    def visualize(self, start_date: Optional[datetime] = None, days: int = 7) -> None:
+        """
+        Generate a calendar-like visualization of the time domain
+        
+        Args:
+            start_date: The start date for visualization (defaults to earliest slot or today)
+            days: Number of days to visualize
+        """
+        if not self.time_slots:
+            return "Empty TimeDomain - nothing to visualize"
+        
+        # Determine start date if not provided
+        if start_date is None:
+            if self.time_slots:
+                # Use the earliest slot date
+                start_date = min(slot.start for slot in self.time_slots)
+            else:
+                # Default to today
+                start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Ensure start_date has time set to midnight
+        start_date = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
+        
+        # Determine the end date
+        end_date = start_date + timedelta(days=days)
+        
+        # Filter slots that fall within our visualization range
+        visible_slots = [
+            slot for slot in self.time_slots 
+            if slot.end > start_date and slot.start < end_date
+        ]
+        
+        if not visible_slots:
+            return f"No time slots to visualize between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}"
+        
+        # Determine the hour range to display (default 8am-8pm if no slots in range)
+        min_hour = min((slot.start.hour for slot in visible_slots), default=8)
+        max_hour = max((slot.end.hour for slot in visible_slots), default=20)
+        
+        min_hour = max(0, min(min_hour, 0))
+        max_hour = min(23, max(max_hour, 23))
+        
+        # Build the calendar visualization
+        result = []
+        
+        # Add header with dates
+        header = "      |"
+        for day_offset in range(days):
+            current_date = start_date + timedelta(days=day_offset)
+            header += f"  {current_date.strftime('%a %m/%d')}  |"
+        result.append(header)
+        
+        # Add separator
+        separator = "------+" + "-------------+".rjust(14, '-') * days
+        result.append(separator)
+        
+        # Add rows for each hour
+        for hour in range(min_hour, max_hour + 1):
+            hour_str = f"{hour:02d}:00 |"
+            
+            for day_offset in range(days):
+                current_date = start_date + timedelta(days=day_offset)
+                hour_start = current_date.replace(hour=hour, minute=0)
+                hour_end = hour_start + timedelta(hours=1)
+                
+                # Check if any slot overlaps with this hour
+                has_slot = any(
+                    slot.overlaps(TimeSlot(hour_start, hour_end))
+                    for slot in visible_slots
+                )
+                
+                if has_slot:
+                    hour_str += " ███████████ |"
+                else:
+                    hour_str += "             |"
+            
+            result.append(hour_str)
+        
+        # Add final separator
+        result.append(separator)
+        
+        print("\n".join(result))

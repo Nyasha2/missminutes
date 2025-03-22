@@ -1,4 +1,4 @@
-from .tasks import Task, Session
+from .tasks import Task, RecurringTask, Session
 from .timeprofile import TimeProfile
 from .timedomain import TimeDomain, TimeSlot 
 from .events import Event
@@ -29,7 +29,88 @@ class Scheduler:
         """Add an event to the scheduler"""
         self.events[event.id] = event
     
-    
+    def _schedule_task(self, task: Task, start_date: datetime, days: int = 7) -> None:
+        """Schedule a single task"""
+        # Get the task's remaining duration
+        task_duration = task.get_remaining_duration()
+        
+        # Project time map for this task, passing the scheduler for event dependencies
+        task_time_domain = task.project_time_domain(start_date, days)
+        
+        # Find available slots considering already scheduled sessions and events
+        available_time_domain = self.apply_scheduled_constraints(task_time_domain, start_date, start_date + timedelta(days=days))
+        
+        # Determine minimum session length for this task
+        min_session_length = task.min_session_length or task_duration
+        
+        # Get slots that are long enough for at least the minimum session length
+        suitable_slots = available_time_domain.get_available_slots(min_session_length)
+        
+        if suitable_slots:
+            # Sort slots by start time
+            sorted_slots = sorted(suitable_slots, key=lambda s: s.start)
+            
+            # Track remaining duration to schedule
+            remaining_duration = task_duration
+            
+            while remaining_duration > timedelta() and sorted_slots:
+                # Choose the earliest available slot
+                best_slot = sorted_slots[0]
+                
+                # Determine session length for this slot
+                if task.max_session_length:
+                    # Limit by max session length if specified
+                    session_length = min(
+                        remaining_duration,
+                        task.max_session_length,
+                        best_slot.duration
+                    )
+                else:
+                    # Otherwise use as much of the slot as needed
+                    session_length = min(remaining_duration, best_slot.duration)
+                
+                # Create a session
+                session = Session(
+                    task_id=task.id,
+                    session_id=str(uuid.uuid4()),
+                    start_time=best_slot.start,
+                    end_time=best_slot.start + session_length,
+                    completed=False
+                )
+                
+                # Add to scheduled sessions
+                self.scheduled_sessions.append(session)
+                
+                # Add session to task
+                task.add_session(session.session_id)
+                
+                # Update remaining duration
+                remaining_duration -= session_length
+                
+                # Create a time domain with the current slots
+                current_domain = TimeDomain(time_slots=[s for s in sorted_slots])
+                
+                # Apply scheduled constraints to get available slots
+                available_domain = self.apply_scheduled_constraints(current_domain, start_date, start_date + timedelta(days=days))
+                
+                # Add a mandatory break between sessions of the same task
+                # by creating a buffer slot around the just scheduled session
+                if task.max_session_length:
+                    buffer_slot = TimeSlot(
+                        session.start_time - timedelta(minutes=30),  # 30 min buffer before
+                        session.end_time + timedelta(minutes=30)     # 30 min buffer after
+                    )
+                    
+                    # Remove this buffer from available slots to prevent back-to-back sessions
+                    available_domain.subtract_slot(buffer_slot)
+                
+                    # Get suitable slots and sort them
+                    sorted_slots = available_domain.get_available_slots(min_session_length)
+                    sorted_slots = sorted(sorted_slots, key=lambda s: s.start)
+                else:
+                    self.handle_scheduling_conflict(task)
+                
+
     def schedule(self, start_date: datetime, days: int = 7) -> list[Session]:
         """Schedule all tasks within the given time period"""
         # Sort tasks by priority (due date, dependencies, etc.)
@@ -40,88 +121,27 @@ class Scheduler:
         # For each task, project its time map and find suitable slots
         for task_id in sorted_task_ids:
             task = self.tasks[task_id]
+            
+            if isinstance(task, RecurringTask):
+                # Get all occurrences within the scheduling period
+                end_date = start_date + timedelta(days=days)
+                occurrences = task.get_next_occurrences(start_date, end_date - timedelta(days=1))
                 
-            # Get the task's remaining duration
-            task_duration = task.get_remaining_duration()
-            
-            # Project time map for this task, passing the scheduler for event dependencies
-            task_time_domain = task.project_time_domain(start_date, days)
-            
-            # Find available slots considering already scheduled sessions and events
-            available_time_domain = self.apply_scheduled_constraints(task_time_domain, start_date, start_date + timedelta(days=days))
-            
-            # Determine minimum session length for this task
-            min_session_length = task.min_session_length or task_duration
-            
-            # Get slots that are long enough for at least the minimum session length
-            suitable_slots = available_time_domain.get_available_slots(min_session_length)
-            
-            if suitable_slots:
-                # Sort slots by start time
-                sorted_slots = sorted(suitable_slots, key=lambda s: s.start)
-                
-                # Track remaining duration to schedule
-                remaining_duration = task_duration
-                
-                while remaining_duration > timedelta() and sorted_slots:
-                    # Choose the earliest available slot
-                    best_slot = sorted_slots[0]
-                    
-                    # Determine session length for this slot
-                    if task.max_session_length:
-                        # Limit by max session length if specified
-                        session_length = min(
-                            remaining_duration,
-                            task.max_session_length,
-                            best_slot.duration
-                        )
-                    else:
-                        # Otherwise use as much of the slot as needed
-                        session_length = min(remaining_duration, best_slot.duration)
-                    
-                    # Create a session
-                    session = Session(
-                        task_id=task.id,
-                        session_id=str(uuid.uuid4()),
-                        start_time=best_slot.start,
-                        end_time=best_slot.start + session_length,
-                        completed=False
-                    )
-                    
-                    # Add to scheduled sessions
-                    self.scheduled_sessions.append(session)
-                    
-                    # Add session to task
-                    task.add_session(session.session_id)
-                    
-                    # Update remaining duration
-                    remaining_duration -= session_length
-                    
-                    # Create a time domain with the current slots
-                    current_domain = TimeDomain(time_slots=[s for s in sorted_slots])
-                    
-                    # Apply scheduled constraints to get available slots
-                    available_domain = self.apply_scheduled_constraints(current_domain, start_date, start_date + timedelta(days=days))
-                    
-                    # Add a mandatory break between sessions of the same task
-                    # by creating a buffer slot around the just scheduled session
-                    if task.max_session_length:
-                        buffer_slot = TimeSlot(
-                            session.start_time - timedelta(minutes=30),  # 30 min buffer before
-                            session.end_time + timedelta(minutes=30)     # 30 min buffer after
-                        )
-                        
-                        # Remove this buffer from available slots to prevent back-to-back sessions
-                        available_domain.subtract_slot(buffer_slot)
-                    
-                    # Get suitable slots and sort them
-                    sorted_slots = available_domain.get_available_slots(min_session_length)
-                    sorted_slots = sorted(sorted_slots, key=lambda s: s.start)
+                # Schedule each occurrence
+                for occurrence_date in occurrences:
+                    # Create a copy of the task with adjusted start time
+                    occurrence_task = copy.deepcopy(task)
+                    occurrence_task.id = task.id
+                    occurrence_task.starts_at = occurrence_date
+                                        
+                    # Schedule this occurrence
+                    self._schedule_task(occurrence_task, occurrence_date, days)
             else:
-                # No suitable slot found, handle conflict
-                self.handle_scheduling_conflict(task)
-        
+                # Regular task, schedule normally
+                self._schedule_task(task, start_date, days)
         return self.scheduled_sessions
+    
+    
     
     def sort_tasks_by_priority(self, tasks: list[Task]) -> list[str]:
         """

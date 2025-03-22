@@ -7,7 +7,7 @@ college schedule with classes, assignments, meals, and other activities.
 """
 
 from missminutes.scheduler import Scheduler
-from missminutes.tasks import Task
+from missminutes.tasks import Task, RecurringTask, RecurrencePattern
 from missminutes.timeprofile import TimeProfile, DayOfWeek
 from missminutes.events import Event
 from datetime import datetime, timedelta
@@ -66,7 +66,7 @@ def main():
     # Dinner time profile (5:30pm-7:30pm all days)
     dinner_profile = TimeProfile(name="Dinner Times")
     for day in DayOfWeek:
-        dinner_profile.add_window(day, 17, 30, 19, 0)  # End by 7pm to finish by 7:30pm
+        dinner_profile.add_window(day, 17, 30, 19, 30)
     scheduler.add_time_profile(dinner_profile)
 
     # Gym time profile (preferred times 9am-12pm and 7pm-10pm)
@@ -221,117 +221,120 @@ def main():
     # ==== DAILY ROUTINE TASKS ====
 
     # Lunch (35-45 minutes between 11am-2pm weekdays)
-    lunch_task = Task(
+    lunch_task = RecurringTask(
         title="Lunch",
         duration=timedelta(minutes=40),
         fixed_schedule=False,
         min_session_length=timedelta(minutes=35),
         max_session_length=timedelta(minutes=45)
     )
+    lunch_task.set_recurrence(RecurrencePattern.DAILY, start_date, until=start_date + timedelta(days=7))
     lunch_task.assign_time_profile(lunch_profile)
     scheduler.add_task(lunch_task)
 
     # Dinner (35-45 minutes between 5:30pm-7:30pm)
-    dinner_task = Task(
+    dinner_task = RecurringTask(
         title="Dinner",
         duration=timedelta(minutes=40),
         fixed_schedule=False,
         min_session_length=timedelta(minutes=35),
         max_session_length=timedelta(minutes=45)
     )
+    dinner_task.set_recurrence(RecurrencePattern.DAILY, start_date, until=start_date + timedelta(days=7))
     dinner_task.assign_time_profile(dinner_profile)
     scheduler.add_task(dinner_task)
 
     # Gym session (1 hour + 40 min shower + 15 min travel)
-    gym_task = Task(
+    gym_task = RecurringTask(
         title="Gym Session",
         duration=timedelta(hours=1, minutes=55),  # 1h gym + 40m shower + 15m travel
         fixed_schedule=False,
         min_session_length=timedelta(hours=1, minutes=55),
         max_session_length=timedelta(hours=1, minutes=55)
     )
+    gym_task.set_recurrence(RecurrencePattern.DAILY, start_date, until=start_date + timedelta(days=7))
     gym_task.assign_time_profile(gym_profile)
     scheduler.add_task(gym_task)
 
     # ==== ASSIGNMENTS ====
 
-    # CS130 Project (Released Friday 5pm, due next Friday 5pm, 12 hours)
-    cs130_project = Task(
-        title="CS130 Project Assignment",
-        description="Released Friday 5pm, due next Friday 5pm",
-        duration=timedelta(hours=12),
-        fixed_schedule=False,
-        min_session_length=timedelta(hours=2),
-        max_session_length=timedelta(hours=4),
-        due=start_date + timedelta(days=11, hours=17)  # Next Friday 5pm
-    )
-    cs130_project.assign_time_profile(general_profile)
-    scheduler.add_task(cs130_project)
+    # # CS130 Project (Released Friday 5pm, due next Friday 5pm, 12 hours)
+    # cs130_project = Task(
+    #     title="CS130 Project Assignment",
+    #     description="Released Friday 5pm, due next Friday 5pm",
+    #     duration=timedelta(hours=12),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(hours=2),
+    #     max_session_length=timedelta(hours=4),
+    #     due=start_date + timedelta(days=11, hours=17)  # Next Friday 5pm
+    # )
+    # cs130_project.assign_time_profile(general_profile)
+    # scheduler.add_task(cs130_project)
 
-    # CS4 Assignment (Released Thursday, due next Thursday, 4 hours)
-    cs4_assignment = Task(
-        title="CS4 Assignment",
-        description="Released Thursday, due next Thursday",
-        duration=timedelta(hours=4),
-        fixed_schedule=False,
-        min_session_length=timedelta(hours=1),
-        max_session_length=timedelta(hours=2),
-        due=start_date + timedelta(days=10)  # Next Thursday midnight
-    )
-    cs4_assignment.assign_time_profile(general_profile)
-    scheduler.add_task(cs4_assignment)
+    # # CS4 Assignment (Released Thursday, due next Thursday, 4 hours)
+    # cs4_assignment = Task(
+    #     title="CS4 Assignment",
+    #     description="Released Thursday, due next Thursday",
+    #     duration=timedelta(hours=4),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(hours=1),
+    #     max_session_length=timedelta(hours=2),
+    #     due=start_date + timedelta(days=10)  # Next Thursday midnight
+    # )
+    # cs4_assignment.assign_time_profile(general_profile)
+    # scheduler.add_task(cs4_assignment)
 
-    # EE150 Assignment (Released Tuesday, due next Tuesday, 9 hours)
-    ee150_assignment = Task(
-        title="EE150 Assignment",
-        description="Released Tuesday, due next Tuesday",
-        duration=timedelta(hours=9),
-        fixed_schedule=False,
-        min_session_length=timedelta(hours=1, minutes=30),
-        max_session_length=timedelta(hours=3),
-        due=start_date + timedelta(days=8)  # Next Tuesday midnight
-    )
-    ee150_assignment.assign_time_profile(general_profile)
-    scheduler.add_task(ee150_assignment)
+    # # EE150 Assignment (Released Tuesday, due next Tuesday, 9 hours)
+    # ee150_assignment = Task(
+    #     title="EE150 Assignment",
+    #     description="Released Tuesday, due next Tuesday",
+    #     duration=timedelta(hours=9),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(hours=1, minutes=30),
+    #     max_session_length=timedelta(hours=3),
+    #     due=start_date + timedelta(days=8)  # Next Tuesday midnight
+    # )
+    # ee150_assignment.assign_time_profile(general_profile)
+    # scheduler.add_task(ee150_assignment)
 
-    # EE150 Paper Readings (Due Sunday midnight, 2 hours)
-    ee150_readings = Task(
-        title="EE150 Paper Readings",
-        description="Due Sunday midnight",
-        duration=timedelta(hours=2),
-        fixed_schedule=False,
-        min_session_length=timedelta(minutes=30),
-        max_session_length=timedelta(hours=1),
-        due=start_date + timedelta(days=6)  # Sunday midnight
-    )
-    ee150_readings.assign_time_profile(general_profile)
-    scheduler.add_task(ee150_readings)
+    # # EE150 Paper Readings (Due Sunday midnight, 2 hours)
+    # ee150_readings = Task(
+    #     title="EE150 Paper Readings",
+    #     description="Due Sunday midnight",
+    #     duration=timedelta(hours=2),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(minutes=30),
+    #     max_session_length=timedelta(hours=1),
+    #     due=start_date + timedelta(days=6)  # Sunday midnight
+    # )
+    # ee150_readings.assign_time_profile(general_profile)
+    # scheduler.add_task(ee150_readings)
 
-    # Ec124 Assignment (Released Tuesday, due next Tuesday, 3 hours)
-    ec124_assignment = Task(
-        title="Ec124 Assignment",
-        description="Released Tuesday, due next Tuesday",
-        duration=timedelta(hours=3),
-        fixed_schedule=False,
-        min_session_length=timedelta(hours=1),
-        max_session_length=timedelta(hours=1, minutes=30),
-        due=start_date + timedelta(days=8)  # Next Tuesday midnight
-    )
-    ec124_assignment.assign_time_profile(general_profile)
-    scheduler.add_task(ec124_assignment)
+    # # Ec124 Assignment (Released Tuesday, due next Tuesday, 3 hours)
+    # ec124_assignment = Task(
+    #     title="Ec124 Assignment",
+    #     description="Released Tuesday, due next Tuesday",
+    #     duration=timedelta(hours=3),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(hours=1),
+    #     max_session_length=timedelta(hours=1, minutes=30),
+    #     due=start_date + timedelta(days=8)  # Next Tuesday midnight
+    # )
+    # ec124_assignment.assign_time_profile(general_profile)
+    # scheduler.add_task(ec124_assignment)
 
-    # CS172 Assignment (Released Monday, due next Monday, 3 hours)
-    cs172_assignment = Task(
-        title="CS172 Assignment",
-        description="Released Monday, due next Monday",
-        duration=timedelta(hours=3),
-        fixed_schedule=False,
-        min_session_length=timedelta(minutes=45),
-        max_session_length=timedelta(hours=1, minutes=30),
-        due=start_date + timedelta(days=7)  # Next Monday midnight
-    )
-    cs172_assignment.assign_time_profile(general_profile)
-    scheduler.add_task(cs172_assignment)
+    # # CS172 Assignment (Released Monday, due next Monday, 3 hours)
+    # cs172_assignment = Task(
+    #     title="CS172 Assignment",
+    #     description="Released Monday, due next Monday",
+    #     duration=timedelta(hours=3),
+    #     fixed_schedule=False,
+    #     min_session_length=timedelta(minutes=45),
+    #     max_session_length=timedelta(hours=1, minutes=30),
+    #     due=start_date + timedelta(days=7)  # Next Monday midnight
+    # )
+    # cs172_assignment.assign_time_profile(general_profile)
+    # scheduler.add_task(cs172_assignment)
 
     # Run the scheduler
     schedule = scheduler.schedule(start_date, days)

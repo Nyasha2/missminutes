@@ -245,29 +245,30 @@ class RecurringTask(Task):
         if freq is not None:
             self.recurrence_rule = rrule(**kwargs)
     
-    def get_next_occurrences(self, count: int = 5, after: Optional[datetime] = None) -> list[datetime]:
+    def get_next_occurrences(self, start_date: datetime, end_date: datetime) -> list[datetime]:
         """
-        Get the next occurrences of this task based on its recurrence rule
+        Get all occurrences of this task within the specified date range
         
         Args:
-            count: Number of occurrences to return
-            after: Start looking for occurrences after this datetime (defaults to now)
+            start_date: Start date of the period to check for occurrences
+            end_date: End date of the period to check for occurrences
             
         Returns:
-            list of upcoming occurrence datetimes
+            list of occurrence datetimes within the specified period
         """
         if not self.recurrence_rule:
             return []
             
-        after = after or datetime.now()
-        
-        # Handle case where we're starting before the recurrence start
-        if after < self.recurrence_start:
-            # Include the first occurrence if it's in the future
-            return list(self.recurrence_rule.replace(count=count))
+        # If the recurrence starts after our period ends, there are no occurrences
+        if self.recurrence_start > end_date:
+            return []
             
-        # Otherwise find the next occurrences after the specified time
-        return list(self.recurrence_rule.replace(dtstart=after, count=count))
+        # If our period starts before the recurrence starts, use recurrence_start as dtstart
+        if start_date < self.recurrence_start:
+            return list(self.recurrence_rule.between(self.recurrence_start, end_date, inc=True))
+            
+        # Otherwise get all occurrences between start_date and end_date
+        return list(self.recurrence_rule.between(start_date, end_date, inc=True))
         
     @classmethod
     def from_task(cls, task: Task, **recurrence_kwargs) -> 'RecurringTask':
