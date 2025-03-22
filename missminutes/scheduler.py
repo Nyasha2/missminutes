@@ -116,11 +116,11 @@ class Scheduler:
                     # Remove this buffer from available slots to prevent back-to-back sessions
                     available_domain.subtract_slot(buffer_slot)
                 
-                    # Get suitable slots and sort them
-                    sorted_slots = available_domain.get_available_slots(min_session_length)
-                    sorted_slots = sorted(sorted_slots, key=lambda s: s.start)
-                else:
-                    self.handle_scheduling_conflict(task)
+                # Get suitable slots and sort them
+                sorted_slots = available_domain.get_available_slots(min_session_length)
+                sorted_slots = sorted(sorted_slots, key=lambda s: s.start)
+        else:
+            self.handle_scheduling_conflict(task)
                 
 
     def schedule(self, start_date: datetime = None, days: int = None) -> list[Session]:

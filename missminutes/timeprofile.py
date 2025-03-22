@@ -89,6 +89,60 @@ class TimeProfile:
         return [self.add_window(day, start_hour, start_minute, end_hour, end_minute)
                 for day in days]
     
+    def remove_time(self, day: DayOfWeek, start_hour: int, start_minute: int, 
+                   end_hour: int, end_minute: int) -> None:
+        """
+        Remove a time window from a specific day's schedule
+        
+        Args:
+            day: Day of week to modify
+            start_hour: Start hour (0-23)
+            start_minute: Start minute (0-59)
+            end_hour: End hour (0-23)
+            end_minute: End minute (0-59)
+        """
+        day_schedule = self.day_schedules[day]
+        
+        # Create a time value range to compare against
+        start_val = start_hour * 60 + start_minute
+        end_val = end_hour * 60 + end_minute
+        
+        # Make a copy of windows to avoid modification during iteration
+        windows_to_keep = []
+        windows_to_add = []
+        
+        for window in day_schedule.time_windows:
+            window_start = window.start_hour * 60 + window.start_minute
+            window_end = window.end_hour * 60 + window.end_minute
+            
+            # If window doesn't overlap with time to remove, keep it unchanged
+            if end_val <= window_start or start_val >= window_end:
+                windows_to_keep.append(window)
+                continue
+                
+            # Window overlaps with time to remove, we need to split it
+            
+            # Part before time to remove
+            if window_start < start_val:
+                windows_to_add.append(TimeWindow(
+                    window.start_hour,
+                    window.start_minute,
+                    start_hour,
+                    start_minute
+                ))
+                
+            # Part after time to remove
+            if window_end > end_val:
+                windows_to_add.append(TimeWindow(
+                    end_hour,
+                    end_minute,
+                    window.end_hour,
+                    window.end_minute
+                ))
+        
+        # Replace windows with the new set
+        day_schedule.time_windows = windows_to_keep + windows_to_add
+    
     def is_available_at(self, day: DayOfWeek, hour: int, minute: int) -> bool:
         """Check if this profile allows scheduling at the given day and time"""
         return self.day_schedules[day].is_available_at(hour, minute)
@@ -97,3 +151,4 @@ class TimeProfile:
         """Check if a specific datetime is available in this profile"""
         day = DayOfWeek(dt.weekday())
         return self.is_available_at(day, dt.hour, dt.minute)
+    
