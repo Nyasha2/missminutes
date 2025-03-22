@@ -186,7 +186,7 @@ class RecurringEvent(Event):
         # Create Event objects for each occurrence
         result = []
         for occurrence_dt in occurrences:
-            # Skip if this occurrence is cancelled or outside range
+            # Skip if this occurrence is outside range
             if occurrence_dt < start or occurrence_dt > end:
                 continue
                 
@@ -194,18 +194,11 @@ class RecurringEvent(Event):
             occurrence = Event(
                 title=self.title,
                 description=self.description,
-                location=self.location,
-                event_type=self.event_type,
                 start_time=occurrence_dt,
                 end_time=occurrence_dt + duration,
-                all_day=self.all_day,
                 id=str(uuid.uuid4()),  # Generate a new ID for this occurrence
                 parent_id=self.id,     # Set parent to this recurring event
-                tags=self.tags.copy(),
-                color=self.color,
                 completed=self.completed,
-                cancelled=self.cancelled,
-                attendees=self.attendees.copy()
             )
             
             # Add the occurrence ID to our tracking list

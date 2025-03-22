@@ -1,7 +1,7 @@
 from .tasks import Task, RecurringTask, Session
 from .timeprofile import TimeProfile
 from .timedomain import TimeDomain, TimeSlot 
-from .events import Event
+from .events import Event, RecurringEvent
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import uuid
@@ -14,12 +14,19 @@ class Scheduler:
     time_profiles: dict[str, TimeProfile] = field(default_factory=dict)
     scheduled_sessions: list[Session] = field(default_factory=list)
     events: dict[str, Event] = field(default_factory=dict)
+    start_date: datetime = field(default_factory=datetime.now)
+    days: int = field(default=7)
     
     def add_task(self, task: Task) -> None:
         """Add a task to be scheduled"""
         if task.completed:
             return
-        self.tasks[task.id] = task
+        if isinstance(task, RecurringTask):
+            occurrences = task.get_occurrences(self.start_date, self.days)
+            for occurrence in occurrences:
+                self.tasks[occurrence.id] = occurrence
+        else:
+            self.tasks[task.id] = task
     
     def add_time_profile(self, profile: TimeProfile) -> None:
         """Add a time profile for scheduling"""
@@ -27,18 +34,23 @@ class Scheduler:
     
     def add_event(self, event: Event) -> None:
         """Add an event to the scheduler"""
-        self.events[event.id] = event
+        if isinstance(event, RecurringEvent):
+            occurrences = event.get_occurrences(self.start_date, self.start_date + timedelta(days=self.days))
+            for occurrence in occurrences:
+                self.events[occurrence.id] = occurrence
+        else:
+            self.events[event.id] = event
     
-    def _schedule_task(self, task: Task, start_date: datetime, days: int = 7) -> None:
+    def _schedule_task(self, task: Task) -> None:
         """Schedule a single task"""
         # Get the task's remaining duration
         task_duration = task.get_remaining_duration()
         
         # Project time map for this task, passing the scheduler for event dependencies
-        task_time_domain = task.project_time_domain(start_date, days)
+        task_time_domain = task.project_time_domain(self.start_date, self.days)
         
         # Find available slots considering already scheduled sessions and events
-        available_time_domain = self.apply_scheduled_constraints(task_time_domain, start_date, start_date + timedelta(days=days))
+        available_time_domain = self.apply_scheduled_constraints(task_time_domain, self.start_date, self.start_date + timedelta(days=self.days))
         
         # Determine minimum session length for this task
         min_session_length = task.min_session_length or task_duration
@@ -91,7 +103,7 @@ class Scheduler:
                 current_domain = TimeDomain(time_slots=[s for s in sorted_slots])
                 
                 # Apply scheduled constraints to get available slots
-                available_domain = self.apply_scheduled_constraints(current_domain, start_date, start_date + timedelta(days=days))
+                available_domain = self.apply_scheduled_constraints(current_domain, self.start_date, self.start_date + timedelta(days=self.days))
                 
                 # Add a mandatory break between sessions of the same task
                 # by creating a buffer slot around the just scheduled session
@@ -111,37 +123,23 @@ class Scheduler:
                     self.handle_scheduling_conflict(task)
                 
 
-    def schedule(self, start_date: datetime, days: int = 7) -> list[Session]:
+    def schedule(self, start_date: datetime = None, days: int = None) -> list[Session]:
         """Schedule all tasks within the given time period"""
         # Sort tasks by priority (due date, dependencies, etc.)
         # Skip completed tasks
+        if start_date:
+            self.start_date = start_date
+        if days:
+            self.days = days
+            
         uncompleted_tasks = [t for t in self.tasks.values() if not t.completed]
         sorted_task_ids = self.sort_tasks_by_priority(uncompleted_tasks)
         
         # For each task, project its time map and find suitable slots
         for task_id in sorted_task_ids:
             task = self.tasks[task_id]
-            
-            if isinstance(task, RecurringTask):
-                # Get all occurrences within the scheduling period
-                end_date = start_date + timedelta(days=days)
-                occurrences = task.get_next_occurrences(start_date, end_date - timedelta(days=1))
-                
-                # Schedule each occurrence
-                for occurrence_date in occurrences:
-                    # Create a copy of the task with adjusted start time
-                    occurrence_task = copy.deepcopy(task)
-                    occurrence_task.id = task.id
-                    occurrence_task.starts_at = occurrence_date
-                                        
-                    # Schedule this occurrence
-                    self._schedule_task(occurrence_task, occurrence_date, days)
-            else:
-                # Regular task, schedule normally
-                self._schedule_task(task, start_date, days)
+            self._schedule_task(task)
         return self.scheduled_sessions
-    
-    
     
     def sort_tasks_by_priority(self, tasks: list[Task]) -> list[str]:
         """
@@ -197,7 +195,7 @@ class Scheduler:
         # - Try alternative scheduling strategies
         print(f"Scheduling conflict: Could not schedule task '{task.title}' (id: {task.id})")
 
-    def visualize_schedule(self, start_date: datetime, days: int = 7) -> dict:
+    def print_schedule(self) -> dict:
         """
         Generate a visualization-friendly representation of the schedule
         Returns a dictionary mapping dates to lists of scheduled sessions and events
@@ -205,8 +203,8 @@ class Scheduler:
         schedule_by_day = {}
         
         # Initialize empty lists for each day
-        for day_offset in range(days):
-            current_date = start_date + timedelta(days=day_offset)
+        for day_offset in range(self.days):
+            current_date = self.start_date + timedelta(days=day_offset)
             date_key = current_date.date().isoformat()
             schedule_by_day[date_key] = []
         
@@ -229,7 +227,7 @@ class Scheduler:
                     })
         
         # Add events to their respective days
-        events = self.get_events(start_date, start_date + timedelta(days=days))
+        events = self.get_events(self.start_date, self.start_date + timedelta(days=self.days))
         for event in events:
             event_date = event.start_time.date().isoformat()
             if event_date in schedule_by_day:

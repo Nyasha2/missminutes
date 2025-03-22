@@ -92,7 +92,7 @@ def main():
         print(f"- {task.title}: {session.start_time.strftime('%Y-%m-%d %H:%M')} to {session.end_time.strftime('%H:%M')}")
     
     # Visualize schedule (for potential UI integration)
-    schedule_by_day = scheduler.visualize_schedule(start_date, days=7)
+    schedule_by_day = scheduler.print_schedule()
     
     # Print schedule by day
     print("\nSchedule by day:")

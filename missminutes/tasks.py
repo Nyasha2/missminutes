@@ -129,28 +129,22 @@ class Task:
         # Create a single time slot from start to end date
         period_start = start_date.replace(hour=0, minute=0, second=0, microsecond=0)
         period_end = (start_date + timedelta(days=days)).replace(hour=23, minute=59, second=59, microsecond=999999)
-        result.add_slot(period_start, period_end)
-        
-        # Apply task start constraint if specified
+                
+        domain_start = period_start
+        domain_end = period_end
         if self.starts_at and self.starts_at > start_date:
-            # Zero out any time slots before starts_at
-            cutoff_domain = TimeDomain()
-            cutoff_domain.add_slot(self.starts_at, start_date + timedelta(days=days))
-            result = result.apply_constraint(cutoff_domain)
+            domain_start = self.starts_at 
+        if self.due and self.due < period_end:
+            domain_end = self.due
+ 
+        result.add_slot(domain_start, domain_end)
         
         # Apply time profiles if any        
         if self.time_profiles:
             # Get time profiles and apply them as constraints
-            profile_domains = []
             for profile in self.time_profiles:
                 profile_domain = TimeDomain.from_time_profile(profile, start_date, days)
-                profile_domains.append(profile_domain)
-            
-            # If we have profile maps, start with the first and intersect with others
-            if profile_domains:
-                result = profile_domains[0]
-                for profile_domain in profile_domains[1:]:
-                    result = result.apply_constraint(profile_domain)
+                result = result.apply_constraint(profile_domain)
         
         # Apply dependency constraints
         # This would be more complex in practice, as you'd need to check each dependency
@@ -245,7 +239,7 @@ class RecurringTask(Task):
         if freq is not None:
             self.recurrence_rule = rrule(**kwargs)
     
-    def get_next_occurrences(self, start_date: datetime, end_date: datetime) -> list[datetime]:
+    def get_occurrences(self, start_date: datetime, count: int) -> list['Task']:
         """
         Get all occurrences of this task within the specified date range
         
@@ -254,22 +248,71 @@ class RecurringTask(Task):
             end_date: End date of the period to check for occurrences
             
         Returns:
-            list of occurrence datetimes within the specified period
+            list of Task objects representing occurrences within the specified period
         """
+        end_date = start_date + timedelta(days=count)
         if not self.recurrence_rule:
+            # If no recurrence rule, just return this task if it falls within range
+            if self.starts_at and self.starts_at >= start_date and self.starts_at <= end_date:
+                return [self]
             return []
             
         # If the recurrence starts after our period ends, there are no occurrences
         if self.recurrence_start > end_date:
             return []
-            
-        # If our period starts before the recurrence starts, use recurrence_start as dtstart
-        if start_date < self.recurrence_start:
-            return list(self.recurrence_rule.between(self.recurrence_start, end_date, inc=True))
-            
-        # Otherwise get all occurrences between start_date and end_date
-        return list(self.recurrence_rule.between(start_date, end_date, inc=True))
         
+        # Determine the start point for finding occurrences
+        effective_start = max(start_date, self.recurrence_start)
+        
+        # Get all occurrence datetimes within the range
+        occurrence_dates = list(self.recurrence_rule.between(effective_start, end_date, inc=True))
+        
+        # Get one extra occurrence beyond the range for due date calculation of the last occurrence
+        next_occurrence = None
+        if occurrence_dates:
+            next_occurrence = self.recurrence_rule.after(end_date, inc=False)
+        
+        # Create Task objects for each occurrence
+        result = []
+        for i, occurrence_dt in enumerate(occurrence_dates):
+            # Calculate due date based on next occurrence
+            if i < len(occurrence_dates) - 1:
+                # Due date is the start of the next occurrence
+                due_date = occurrence_dates[i + 1]
+            elif next_occurrence:
+                # For the last occurrence in our range, use the next occurrence beyond the range
+                due_date = next_occurrence
+            else:
+                # Fallback for the very last occurrence in the series
+                # Default to end of the day
+                due_date = self.recurrence_rule.replace(count=count+1).after(occurrence_dt, inc=False)
+
+            
+            # Generate a unique ID for this occurrence
+            occurrence_id = str(uuid.uuid4())
+            
+            # Create a new Task with the same properties but different start time and due date
+            occurrence = Task(
+                title=self.title,
+                description=self.description,
+                duration=self.duration,
+                due=due_date,
+                starts_at=occurrence_dt,
+                id=occurrence_id,
+                parent_id=self.id,  # Set parent to this recurring task
+                time_profiles=self.time_profiles.copy(),
+                dependencies=self.dependencies.copy(),
+                min_session_length=self.min_session_length,
+                max_session_length=self.max_session_length,
+                buffer_before=self.buffer_before,
+                buffer_after=self.buffer_after,
+                fixed_schedule=self.fixed_schedule,
+                completed=self.completed
+            )
+            
+            result.append(occurrence)
+            
+        return result
     @classmethod
     def from_task(cls, task: Task, **recurrence_kwargs) -> 'RecurringTask':
         """
