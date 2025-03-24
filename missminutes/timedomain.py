@@ -50,6 +50,10 @@ class TimeDomain:
                     conflicts.append((slot1, slot2))
         return conflicts
     
+    def is_time_available(self, start: datetime, end: datetime) -> bool:
+        """Check if a specific time range is available"""
+        return not any(slot.overlaps(TimeSlot(start, end)) for slot in self.time_slots)
+    
     @classmethod
     def from_time_profile(cls, profile: TimeProfile, start_date: datetime, 
                          days: int = 7) -> 'TimeDomain':

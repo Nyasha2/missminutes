@@ -50,7 +50,6 @@ class Task:
     max_session_length: Optional[timedelta] = None
     buffer_before: timedelta = field(default_factory=lambda: timedelta(minutes=0))
     buffer_after: timedelta = field(default_factory=lambda: timedelta(minutes=0))
-    fixed_schedule: bool = False  # If True, must be scheduled exactly as specified
     
     # Progress tracking
     completed: bool = False
@@ -306,7 +305,6 @@ class RecurringTask(Task):
                 max_session_length=self.max_session_length,
                 buffer_before=self.buffer_before,
                 buffer_after=self.buffer_after,
-                fixed_schedule=self.fixed_schedule,
                 completed=self.completed
             )
             
@@ -342,7 +340,6 @@ class RecurringTask(Task):
             max_session_length=task.max_session_length,
             buffer_before=task.buffer_before,
             buffer_after=task.buffer_after,
-            fixed_schedule=task.fixed_schedule,
             completed=task.completed,
             completed_at=task.completed_at,
             time_spent=task.time_spent,

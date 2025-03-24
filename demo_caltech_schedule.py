@@ -174,7 +174,6 @@ def main():
     lunch_task = RecurringTask(
         title="Lunch",
         duration=timedelta(minutes=40),
-        fixed_schedule=False,
         min_session_length=timedelta(minutes=35),
         max_session_length=timedelta(minutes=45)
     )
@@ -186,7 +185,6 @@ def main():
     dinner_task = RecurringTask(
         title="Dinner",
         duration=timedelta(minutes=40),
-        fixed_schedule=False,
         min_session_length=timedelta(minutes=35),
         max_session_length=timedelta(minutes=45)
     )
@@ -198,7 +196,6 @@ def main():
     gym_task = RecurringTask(
         title="Gym Session",
         duration=timedelta(hours=1, minutes=55),  # 1h gym + 40m shower + 15m travel
-        fixed_schedule=False,
         min_session_length=timedelta(hours=1, minutes=55),
         max_session_length=timedelta(hours=1, minutes=55)
     )
@@ -213,7 +210,6 @@ def main():
         title="CS130 Project Assignment",
         description="Released Friday 5pm, due next Friday 5pm",
         duration=timedelta(hours=12),
-        fixed_schedule=False,
         min_session_length=timedelta(hours=2),
         max_session_length=timedelta(hours=4),
         due=start_date + timedelta(days=11, hours=17)  # Next Friday 5pm
@@ -226,7 +222,6 @@ def main():
         title="CS4 Assignment",
         description="Released Thursday, due next Thursday",
         duration=timedelta(hours=4),
-        fixed_schedule=False,
         min_session_length=timedelta(hours=1),
         max_session_length=timedelta(hours=2),
         due=start_date + timedelta(days=10)  # Next Thursday midnight
@@ -239,7 +234,6 @@ def main():
         title="EE150 Assignment",
         description="Released Tuesday, due next Tuesday",
         duration=timedelta(hours=9),
-        fixed_schedule=False,
         min_session_length=timedelta(hours=1, minutes=30),
         max_session_length=timedelta(hours=3),
         due=start_date + timedelta(days=8)  # Next Tuesday midnight
@@ -252,7 +246,6 @@ def main():
         title="EE150 Paper Readings",
         description="Due Sunday midnight",
         duration=timedelta(hours=2),
-        fixed_schedule=False,
         min_session_length=timedelta(minutes=30),
         max_session_length=timedelta(hours=1),
         due=start_date + timedelta(days=6)  # Sunday midnight
@@ -265,7 +258,6 @@ def main():
         title="Ec124 Assignment",
         description="Released Tuesday, due next Tuesday",
         duration=timedelta(hours=3),
-        fixed_schedule=False,
         min_session_length=timedelta(hours=1),
         max_session_length=timedelta(hours=1, minutes=30),
         due=start_date + timedelta(days=8)  # Next Tuesday midnight
@@ -278,7 +270,6 @@ def main():
         title="CS172 Assignment",
         description="Released Monday, due next Monday",
         duration=timedelta(hours=3),
-        fixed_schedule=False,
         min_session_length=timedelta(minutes=45),
         max_session_length=timedelta(hours=1, minutes=30),
         due=start_date + timedelta(days=7)  # Next Monday midnight

@@ -71,8 +71,7 @@ def main():
         title="Team meeting",
         description="Weekly team sync",
         duration=timedelta(hours=1),
-        due=datetime.now() + timedelta(days=1),
-        fixed_schedule=True
+        due=datetime.now() + timedelta(days=5),
     )
     task3.assign_time_profile(weekday_profile)
     
