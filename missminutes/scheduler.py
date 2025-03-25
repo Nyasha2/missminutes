@@ -148,14 +148,12 @@ class Scheduler:
         """
                
         # Sort criteria:
-        # 1. Fixed schedule tasks first
-        # 2. Then by due date (earlier = higher priority)
-        # 3. Then by dependency count (more dependencies = higher priority)
-        # 4. Finally by ID for stable sorting
+        # 1. Then by due date (earlier = higher priority)
+        # 2. Then by dependency count (more dependencies = higher priority)
+        # 3. Finally by ID for stable sorting
         sorted_tasks = sorted(
             tasks,
             key=lambda t: (
-                not t.fixed_schedule,  # Fixed schedule first
                 t.due or datetime.max,  # Earlier due date
                 -len(t.dependencies),   # More dependencies
                 t.id                    # Stable sorting
