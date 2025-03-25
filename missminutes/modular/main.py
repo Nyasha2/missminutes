@@ -12,7 +12,7 @@ tasks = {
          min_session=60, max_session=120,
          preferred_windows=[(datetime(2023,9,1,9), datetime(2023,9,1,12))]),
     "essay": Task("essay", "Essay", 240, datetime(2023,9,1,10), datetime(2023,9,3,16),
-         max_sessions_per_day=1),
+         max_sessions_per_day=4),
     "gym": Task("gym", "Gym", 60, datetime(2023,9,1,9), datetime(2023,9,3,20),
          preferred_windows=[(datetime(2023,9,1,17), datetime(2023,9,1,19))])
 }
