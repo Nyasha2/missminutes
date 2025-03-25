@@ -6,10 +6,11 @@ import math
 
 
 class Task:
-    def __init__(self, id: str, duration: float, est: datetime, lft: datetime,
-                 min_session: float = 0.5, max_session: float = 4.0,
-                 max_sessions_per_day: int = 3, preferred_windows: List[Tuple[datetime, datetime]] = None):
+    def __init__(self, id: str, name: str, duration: float, est: datetime, lft: datetime,
+                 min_session: float = 30, max_session: float = 240,
+                 max_sessions_per_day: int = None, preferred_windows: List[Tuple[datetime, datetime]] = None):
         self.id = id
+        self.name = name
         self.duration = duration
         self.est = est
         self.lft = lft
@@ -20,23 +21,24 @@ class Task:
 
 class Constraint(ABC):
     @abstractmethod
-    def apply(self, model: cp_model.CpModel, task_vars: Dict[str, Dict], tasks: List[Task]):
+    def apply(self, model: cp_model.CpModel, task_vars: Dict[str, Dict], tasks: Dict[str, Task]):
         pass
 
 class Objective(ABC):
     @abstractmethod
-    def apply(self, model: cp_model.CpModel, task_vars: Dict[str, Dict], tasks: List[Task]) -> cp_model.IntVar:
+    def apply(self, model: cp_model.CpModel, task_vars: Dict[str, Dict], tasks: Dict[str, Task]) -> cp_model.IntVar:
         pass
 
 class ModularScheduler:
     def __init__(self):
-        self.tasks: List[Task] = []
+        self.tasks: Dict[str, Task] = {}
         self.constraints: List[Constraint] = []
         self.objectives: List[Objective] = []
         self.model = cp_model.CpModel()
+        self.debug = True
         
     def add_task(self, task: Task):
-        self.tasks.append(task)
+        self.tasks[task.id] = task
         
     def add_constraint(self, constraint: Constraint):
         self.constraints.append(constraint)
@@ -46,15 +48,15 @@ class ModularScheduler:
         
     def _create_task_vars(self) -> Dict[str, Dict]:
         task_vars = {}
-        for task in self.tasks:
+        for _, task in self.tasks.items():
             est_min = int((task.est - datetime(1970,1,1)).total_seconds() // 60)
             lft_min = int((task.lft - datetime(1970,1,1)).total_seconds() // 60)
-            min_dur = int(task.min_session * 60)
-            max_dur = int(task.max_session * 60)
+            min_dur = int(task.min_session)
+            max_dur = int(task.max_session)
             
             # Calculate reasonable max sessions
-            min_sessions = math.ceil(task.duration * 60 / max_dur)
-            max_sessions = math.ceil(task.duration * 60 / min_dur)
+            min_sessions = math.ceil(task.duration / max_dur)
+            max_sessions = math.ceil(task.duration / min_dur)
         
             
             sessions = []
@@ -82,11 +84,12 @@ class ModularScheduler:
             
             # Total duration constraint (exactly matches task duration)
             total_dur = sum(s['duration'] for s in sessions )
-            self.model.Add(total_dur == int(task.duration * 60))
+            self.model.Add(total_dur == int(task.duration))
             
             # Minimum sessions constraint
             active_sessions = [s['active'] for s in sessions]
-            self.model.Add(sum(active_sessions) >= min_sessions)
+            # self.model.Add(sum(active_sessions) >= min_sessions)
+            self.model.Add(sum(active_sessions) <= max_sessions)
             
             task_vars[task.id] = {
                 'sessions': sessions,
@@ -108,15 +111,17 @@ class ModularScheduler:
             
         # Solve with debug callback
         solver = cp_model.CpSolver()
-        
-        # Initialize and use the debug callback
-        debug_cb = DebugSolutionCallback(task_vars, self.tasks)
-        solver.parameters.log_search_progress = True  # Enable search progress logging too
-        status = solver.SolveWithSolutionCallback(self.model, debug_cb)
-        
+        if self.debug:
+            # Initialize and use the debug callback
+            debug_cb = DebugSolutionCallback(task_vars, self.tasks)
+            solver.parameters.log_search_progress = True  # Enable search progress logging too
+            status = solver.SolveWithSolutionCallback(self.model, debug_cb)
+        else:
+            status = solver.Solve(self.model)
+            
         if status in (cp_model.OPTIMAL, cp_model.FEASIBLE):
             result = {}
-            for task in self.tasks:
+            for _, task in self.tasks.items():
                 sessions = []
                 for s in task_vars[task.id]['sessions']:
                     start = datetime(1970,1,1) + timedelta(minutes=solver.Value(s['start']))
@@ -135,7 +140,7 @@ class DebugSolutionCallback(cp_model.CpSolverSolutionCallback):
         self.tasks = tasks
         
     def on_solution_callback(self):
-        for task in self.tasks:
+        for _, task in self.tasks.items():
             print(f"Task {task.id}:")
             for i, s in enumerate(self.task_vars[task.id]['sessions']):
                 active = self.Value(s['active'])

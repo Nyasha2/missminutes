@@ -6,7 +6,7 @@ class MaximizePreference(Objective):
     def apply(self, model, task_vars, tasks):
         total_pref = model.NewIntVar(0, len(tasks)*100, "total_pref")
         pref_scores = []
-        for task in tasks:
+        for _, task in tasks.items():
             if not task.preferred_windows:
                 continue
             for session in task_vars[task.id]['sessions']:

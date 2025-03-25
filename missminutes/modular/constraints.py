@@ -1,9 +1,9 @@
 from scheduler import Constraint
-
+from datetime import datetime
 class NonOverlapConstraint(Constraint):
     def apply(self, model, task_vars, tasks):
         all_intervals = []
-        for task in tasks:
+        for _, task in tasks.items():
             all_intervals.extend([s['interval'] for s in task_vars[task.id]['sessions']])
         model.AddNoOverlap(all_intervals)
 
@@ -24,3 +24,27 @@ class DependencyConstraint(Constraint):
         
         for session in task_vars[self.task_id]['sessions']:
             model.Add(session['start'] >= last_dep_end)
+
+class MaxSessionsPerDayConstraint(Constraint):
+    def apply(self, model, task_vars, tasks):
+        for task_id, task in tasks.items():
+            if task.max_sessions_per_day is not None:
+                start_day = int((task.est - datetime(1970,1,1)).total_seconds() // 86400)
+                end_day = int((task.lft - datetime(1970,1,1)).total_seconds() // 86400)
+               
+                for day in range(start_day, end_day + 1):
+                    day_session_flags = []
+                    for i, session in enumerate(task_vars[task_id]['sessions']):
+                        is_active_and_on_day = model.NewBoolVar(
+                            f"{task_id}_session_{i}_active_on_day_{day}"
+                        )
+                        is_on_day = model.NewBoolVar(f"{task_id}_session_{i}_on_day_{day}")
+                        session_day = model.NewIntVar(start_day, end_day, f"{task_id}_session_{i}_day")
+                        model.AddDivisionEquality(session_day,session['start'], 1440)
+                        model.Add(session_day == day).OnlyEnforceIf(is_on_day)
+                        model.Add(session_day != day).OnlyEnforceIf(is_on_day.Not())
+                        model.AddMultiplicationEquality(is_active_and_on_day, session['active'], is_on_day)
+                        day_session_flags.append(is_active_and_on_day)
+                    if len(day_session_flags) > 0:
+                        model.Add(sum(day_session_flags) <= task.max_sessions_per_day)   
+                
