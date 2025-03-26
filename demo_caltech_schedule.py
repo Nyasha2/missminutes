@@ -59,7 +59,7 @@ def main():
 
     # Lunch time profile (11am-2pm weekdays)
     lunch_profile = TimeProfile(name="Lunch Times")
-    for day in weekdays:
+    for day in DayOfWeek:
         lunch_profile.add_window(day, 11, 0, 14, 0)
     scheduler.add_time_profile(lunch_profile)
 
@@ -221,7 +221,7 @@ def main():
     cs4_assignment = Task(
         title="CS4 Assignment",
         description="Released Thursday, due next Thursday",
-        duration=timedelta(hours=4),
+        duration=timedelta(hours=6),
         min_session_length=timedelta(hours=1),
         max_session_length=timedelta(hours=2),
         due=start_date + timedelta(days=10)  # Next Thursday midnight
@@ -285,19 +285,51 @@ def main():
 
     # Print out the schedule for each day
     for date, sessions in schedule_by_day.items():
-        print(f"\n=== {date} ===")
+        date_obj = datetime.fromisoformat(date)
+        print(f"\n=== {date_obj.strftime('%A, %B %d, %Y')} ===")
         if not sessions:
             print("No sessions scheduled.")
         else:
             # Sort sessions by start time
             sorted_sessions = sorted(sessions, key=lambda s: s['start_time'])
-            for session in sorted_sessions:
-                start = datetime.fromisoformat(session['start_time'])
-                end = datetime.fromisoformat(session['end_time'])
-                if session['type'] == 'session':
-                    print(f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')}: {session['task_title']}")
-                elif session['type'] == 'event':
-                    print(f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')}: {session['title']}")
+            
+            # Find free time between sessions
+            free_time_blocks = []
+            for i in range(len(sorted_sessions) - 1):
+                current_end = datetime.fromisoformat(sorted_sessions[i]['end_time'])
+                next_start = datetime.fromisoformat(sorted_sessions[i+1]['start_time'])
+                if next_start > current_end:
+                    free_time_blocks.append((current_end, next_start))
+            
+            # Print sessions and free time in chronological order
+            session_index = 0
+            free_time_index = 0
+            
+            while session_index < len(sorted_sessions) or free_time_index < len(free_time_blocks):
+                # Determine what comes next chronologically
+                if free_time_index >= len(free_time_blocks) or (
+                    session_index < len(sorted_sessions) and 
+                    datetime.fromisoformat(sorted_sessions[session_index]['start_time']) < free_time_blocks[free_time_index][0]
+                ):
+                    # Print session
+                    session = sorted_sessions[session_index]
+                    start = datetime.fromisoformat(session['start_time'])
+                    end = datetime.fromisoformat(session['end_time'])
+                    duration = end - start
+                    duration_str = f"({duration.seconds // 3600}h {(duration.seconds % 3600) // 60}m)"
+                    
+                    if session['type'] == 'session':
+                        print(f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')} {duration_str}: {session['task_title']}")
+                    elif session['type'] == 'event':
+                        print(f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')} {duration_str}: {session['title']}")
+                    session_index += 1
+                else:
+                    # Print free time
+                    start, end = free_time_blocks[free_time_index]
+                    duration = end - start
+                    duration_str = f"({duration.seconds // 3600}h {(duration.seconds % 3600) // 60}m)"
+                    print(f"{start.strftime('%I:%M %p')} - {end.strftime('%I:%M %p')} {duration_str}: FREE TIME")
+                    free_time_index += 1
 
 if __name__ == "__main__":
     main() 

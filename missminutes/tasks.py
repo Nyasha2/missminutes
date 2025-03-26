@@ -44,10 +44,10 @@ class Task:
     
     # Scheduling constraints
     time_profiles: list['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
-    dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Entity ID -> dependency type
-    dependents: dict[str, DependencyType] = field(default_factory=dict)    # Entity ID -> dependency type
-    min_session_length: Optional[timedelta] = None
-    max_session_length: Optional[timedelta] = None
+    task_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Task ID -> dependency type
+    event_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Event ID -> dependency type
+    min_session_length: Optional[timedelta] = timedelta(minutes=15)
+    max_session_length: Optional[timedelta] = timedelta(hours=4)
     buffer_before: timedelta = field(default_factory=lambda: timedelta(minutes=0))
     buffer_after: timedelta = field(default_factory=lambda: timedelta(minutes=0))
     
@@ -63,11 +63,8 @@ class Task:
         
         The entity can be either a Task or an Event
         """
-        self.dependencies[entity.id] = dep_type
-        
-        # Add inverse relationship to the dependency if it's a Task
-        # Events don't track dependents
-        if hasattr(entity, 'dependents'):
+        if isinstance(entity, Task):
+            self.task_dependencies[entity.id] = dep_type
             match dep_type:
                 case DependencyType.BEFORE:
                     inverse_type = DependencyType.AFTER
@@ -79,7 +76,11 @@ class Task:
                     inverse_type = DependencyType.DURING
                 case DependencyType.CONCURRENT:
                     inverse_type = DependencyType.CONCURRENT
-            entity.dependents[self.id] = inverse_type
+            entity.task_dependencies[self.id] = inverse_type
+        elif isinstance(entity, Event):
+            self.event_dependencies[entity.id] = dep_type
+        
+
 
     def add_subtask(self, subtask: 'Task'):
         """Add a subtask and update relationships"""
@@ -114,13 +115,28 @@ class Task:
     def update_time_spent(self, additional_time: timedelta):
         """Update total time spent on task"""
         self.time_spent += additional_time
+        
+    def __eq__(self, other: 'Task') -> bool:
+        return self.id == other.id
+    
+    def __lt__(self, other: 'Task') -> bool:
+        return self.id < other.id
+    
+    def __gt__(self, other: 'Task') -> bool:
+        return self.id > other.id
+    
+    def __le__(self, other: 'Task') -> bool:
+        return self.id <= other.id
+    
+    def __ge__(self, other: 'Task') -> bool:
+        return self.id >= other.id
 
     @property
     def total_duration(self) -> timedelta:
         """Get total duration including buffers"""
         return self.duration + self.buffer_before + self.buffer_after
 
-    def project_time_domain(self, start_date: datetime, days: int = 7) -> TimeDomain:
+    def time_domain(self, start_date: datetime, days: int = 7) -> TimeDomain:
         """Project this task's constraints as a TimeDomain"""
         # Start with all time available
         result = TimeDomain()
@@ -145,11 +161,7 @@ class Task:
                 profile_domain = TimeDomain.from_time_profile(profile, start_date, days)
                 result = result.apply_constraint(profile_domain)
         
-        # Apply dependency constraints
-        # This would be more complex in practice, as you'd need to check each dependency
-        # type and how it affects scheduling
-        
-        # Return the resulting time map with all constraints applied
+        assert not result.is_empty(), f'time_domain: Task "{self.title}" domain is empty after applying time profiles'
         return result
 
 @dataclass
@@ -292,7 +304,7 @@ class RecurringTask(Task):
             
             # Create a new Task with the same properties but different start time and due date
             occurrence = Task(
-                title=self.title,
+                title=f"{self.title} {i+1}",
                 description=self.description,
                 duration=self.duration,
                 due=due_date,
@@ -300,7 +312,8 @@ class RecurringTask(Task):
                 id=occurrence_id,
                 parent_id=self.id,  # Set parent to this recurring task
                 time_profiles=self.time_profiles.copy(),
-                dependencies=self.dependencies.copy(),
+                task_dependencies=self.task_dependencies.copy(),
+                event_dependencies=self.event_dependencies.copy(),
                 min_session_length=self.min_session_length,
                 max_session_length=self.max_session_length,
                 buffer_before=self.buffer_before,
@@ -334,8 +347,8 @@ class RecurringTask(Task):
             parent_id=task.parent_id,
             subtask_ids=task.subtask_ids.copy(),
             time_profiles=task.time_profiles.copy(),
-            dependencies=task.dependencies.copy(),
-            dependents=task.dependents.copy(),
+            task_dependencies=task.task_dependencies.copy(),
+            event_dependencies=task.event_dependencies.copy(),
             min_session_length=task.min_session_length,
             max_session_length=task.max_session_length,
             buffer_before=task.buffer_before,

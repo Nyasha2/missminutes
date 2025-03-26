@@ -22,6 +22,15 @@ class TimeSlot:
     def contains(self, dt: datetime) -> bool:
         """Check if this slot contains the given datetime"""
         return self.start <= dt < self.end
+    
+    def __hash__(self) -> int:
+        return hash((self.start, self.end))
+    
+    def __str__(self) -> str:
+        if self.start.date() == self.end.date():
+            return f"{self.start.strftime('%Y-%m-%d %H:%M')} - {self.end.strftime('%H:%M')} ({self.duration})"
+        else:
+            return f"{self.start.strftime('%Y-%m-%d %H:%M')} - {self.end.strftime('%Y-%m-%d %H:%M')} ({self.duration})"
 
 
 @dataclass
@@ -36,10 +45,6 @@ class TimeDomain:
     def remove_slot(self, slot: TimeSlot) -> None:
         """Remove a specific slot from the map"""
         self.time_slots.remove(slot)
-    
-    def get_available_slots(self, min_duration: timedelta) -> list[TimeSlot]:
-        """Get all slots with at least the specified duration"""
-        return [slot for slot in self.time_slots if slot.duration >= min_duration]
     
     def find_conflicts(self, other: 'TimeDomain') -> list[tuple[TimeSlot, TimeSlot]]:
         """Find conflicts between this map and another"""
@@ -96,16 +101,12 @@ class TimeDomain:
         
         return result
 
-    def subtract(self, other: 'TimeDomain') -> 'TimeDomain':
-        """Subtract another TimeDomain from this one (this - other)"""
-        result = copy.deepcopy(self)
-        
+    def subtract(self, other: 'TimeDomain') -> None:
+        """Subtract another TimeDomain from this one (this - other)"""        
         # For each slot in the other TimeDomain, remove its overlap from result
         for other_slot in other.time_slots:
-            result.subtract_slot(other_slot)
-        
-        return result
-    
+            self.subtract_slot(other_slot)
+            
     def subtract_slot(self, subtract_slot: TimeSlot) -> None:
         """
         Subtract a time slot from this TimeDomain
@@ -114,7 +115,7 @@ class TimeDomain:
         for slot in list(self.time_slots):  # Create a copy to avoid modification during iteration
             if slot.overlaps(subtract_slot):
                 self._handle_slot_subtract(slot, subtract_slot)
-
+                
     def _handle_slot_subtract(self, slot: TimeSlot, subtract_slot: TimeSlot) -> None:
         """
         Handle subtraction of one slot from another
@@ -139,10 +140,49 @@ class TimeDomain:
         # Case 4: Subtraction covers the end of the slot
         elif subtract_slot.start > slot.start and subtract_slot.start < slot.end and subtract_slot.end >= slot.end:
             self.add_slot(slot.start, subtract_slot.start)
+                
+                
+    def trim_left(self, time_point : datetime) -> None:
+        """Trim all slots to the left of the given time point"""
+        for slot in sorted(self.time_slots, key=lambda x: x.start):
+            if slot.end < time_point:
+                self.remove_slot(slot)
+            elif slot.start < time_point:
+                self.add_slot(time_point, slot.end)
+                self.remove_slot(slot)
+                break
+            else:
+                break
+
+    def trim_right(self, time_point : datetime) -> None:
+        """Trim all slots to the right of the given time point"""
+        for slot in sorted(self.time_slots, key=lambda x: x.start, reverse=True):
+            if slot.start >= time_point:
+                self.remove_slot(slot)
+            elif slot.end > time_point:
+                self.add_slot(slot.start, time_point)
+                self.remove_slot(slot)
+                break
+            else:
+                break
+
 
     def total_available_time(self) -> timedelta:
         """Calculate the total available time in this map"""
         return sum((slot.duration for slot in self.time_slots), timedelta())
+    
+    def copy(self) -> 'TimeDomain':
+        """Create a deep copy of the TimeDomain"""
+        return copy.deepcopy(self)
+
+    def is_empty(self) -> bool:
+        """Check if domain has any viable slots"""
+        return len(self.time_slots) == 0
+
+    def get_earliest_slot(self) -> Optional[TimeSlot]:
+        """Get the earliest available slot"""
+        return min(self.time_slots, key=lambda s: s.start) if self.time_slots else None
+
     
     def __str__(self) -> str:
         """Return a string representation of the TimeDomain"""

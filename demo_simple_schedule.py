@@ -55,6 +55,7 @@ def main():
         title="Write report",
         description="Complete quarterly report",
         duration=timedelta(hours=4),
+        buffer_after=timedelta(minutes=15),
         due=datetime.now() + timedelta(days=3)
     )
     task1.assign_time_profile(weekday_profile)
