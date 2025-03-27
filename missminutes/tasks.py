@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Any, Union
 from dataclasses import dataclass, field
-import uuid
+import hashlib
 from enum import Enum
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
 from .timedomain import TimeDomain
@@ -38,7 +38,7 @@ class Task:
     starts_at: Optional[datetime] = None
     
     # Organization
-    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    id: str = None
     parent_id: Optional[str] = None
     subtask_ids: set[str] = field(default_factory=set)
     
@@ -56,6 +56,9 @@ class Task:
     completed_at: Optional[datetime] = None
     time_spent: timedelta = field(default_factory=lambda: timedelta())
     sessions: list[str] = field(default_factory=list)
+    
+    def __post_init__(self):
+        self.id = hashlib.sha256(self.title.encode()).hexdigest()[:8]
     
     def add_dependency(self, entity: Entity, dep_type: DependencyType = DependencyType.BEFORE):
         """
@@ -300,8 +303,8 @@ class RecurringTask(Task):
 
             
             # Generate a unique ID for this occurrence
-            occurrence_id = str(uuid.uuid4())
-            
+            occurrence_id = hashlib.sha256(f"{self.title}-{i+1}".encode()).hexdigest()[:8]
+        
             # Create a new Task with the same properties but different start time and due date
             occurrence = Task(
                 title=f"{self.title} {i+1}",
