@@ -14,28 +14,31 @@ def calculate_overlap_metric(domain: TimeDomain, domain_overlaps: TimeDomain) ->
     assert not domain.is_empty(), "calculate_overlap_metric: empty time domain"
     assert not domain_overlaps.is_empty(), "calculate_overlap_metric: empty domain_overlaps"
     intersection = domain_overlaps.intersection(domain)
-    return intersection.total_weight() / intersection.total_time().total_seconds()
+    return intersection.total_weight_time() / intersection.total_time().total_seconds()
 
 
-def sorted_slots(domain: TimeDomain, domain_overlaps: TimeDomain) -> list[Interval]:
+def sorted_slots(domain: TimeDomain, domain_overlaps: TimeDomain, max_session_length: timedelta | None) -> list[tuple[Interval, int]]:
     """Sort slots in domain by domain_overlaps. Least overlapped slots come first."""
     assert not domain.is_empty(), "sorted_slots: empty time domain"
+    if max_session_length is None:
+        max_session_length = domain.total_time()
     intersection = domain_overlaps.intersection(domain)
     intersection_dict = intersection.time_slots.as_dict()
-    intermediate : list[Interval] = sorted(intersection.time_slots, key=lambda x: intersection_dict[x])
-    final : list[Interval] = []
-    for iv in intermediate:
+    intermediate : list[tuple[Interval, int]] = sorted(intersection.time_slots.items(), key=lambda x: intersection_dict[x[0]])
+    final : list[tuple[Interval, int]] = []
+    for iv, v in intermediate:
         if iv.atomic:
-            final.append(iv)
+            final.append((iv, v))
         else:
-            final.extend(sorted(iv, key=lambda x: -(x.upper - x.lower).total_seconds()))
+            final.extend(sorted([(atomic, v) for atomic in iv], key=lambda x: abs((x[0].upper - x[0].lower).total_seconds() - max_session_length.total_seconds())))
     return final
 
 def apply_min_session_length_constraint(domain: TimeDomain, min_session_length: timedelta) -> None:
     """Remove all slots with duration less than min_session_length"""
     for slot in domain.time_slots:
-        if slot.upper - slot.lower < min_session_length:
-            domain.remove_slot(slot)
+        for atomic in slot:
+            if atomic.upper - atomic.lower < min_session_length:
+                domain.remove_slot(atomic.lower, atomic.upper)
 
 @dataclass
 class ConstraintSolver:
@@ -132,9 +135,12 @@ class ConstraintSolver:
         print(f"Starting solve with heap size {len(tasks_with_domains)}")
         while tasks_with_domains:
             print(f"Remaining tasks to fully schedule: {len(tasks_with_domains)}")
-            topo_rank, _, task, current_domain = heapq.heappop(tasks_with_domains)
+            topo_rank, m, task, current_domain = heapq.heappop(tasks_with_domains)
             
-            print(f"Attempting to schedule task {task.title} with remaining duration {task.get_remaining_duration()}")
+            remaining_duration = task.get_remaining_duration()
+            session_lb = min(task.min_session_length, remaining_duration)
+            ideal_session_length = min(task.max_session_length or remaining_duration, remaining_duration)
+            print(f"Attempting to schedule task {task.title} with ideal session length {ideal_session_length} and metric {-m}")
             
             # assert task.get_remaining_duration() >= task.min_session_length, f'Task "{task.title}" has min session length {task.min_session_length} > remaining duration {task.get_remaining_duration()}'
             
@@ -143,19 +149,20 @@ class ConstraintSolver:
             #2. preferred window constraint (domain doesn't go beyond preferred window or is weighted by preferred window)
             #3. task dependency constraint (tasks are topo sorted)
             
-            apply_min_session_length_constraint(current_domain, task.min_session_length)
-            assert current_domain.total_time() >= task.get_remaining_duration(), f'Task "{task.title}" domain ran out of time after min session length constraint'
-            slots = sorted_slots(current_domain, interval_overlaps)
+            apply_min_session_length_constraint(current_domain, session_lb)
+            assert current_domain.total_time() >= remaining_duration, f'Task "{task.title}" domain ran out of time after min session length constraint'
+            slots = sorted_slots(current_domain, interval_overlaps, ideal_session_length)
             assert slots, f'Task "{task.title}" domain has no slots after min session length constraint'
             
-            print(f"Available slots: \n{'\n'.join(['\t' + to_string(slot, lambda x: f"{x.strftime('%a')} {x.strftime('%H:%M')}") for slot in slots])}")
+            print("Available slots: ")
+            for slot, v in slots:
+                print(f"\t{to_string(slot, lambda x: f"{x.strftime('%a')} {x.strftime('%H:%M')}")} <{slot.upper - slot.lower}> <{v}>")
             # Try first available slot
-            best_slot = slots[0]
+            best_slot, _ = slots[0]
             assert best_slot.atomic, f'Best slot is not atomic: {best_slot}'
             
             session_duration = min(
-                task.get_remaining_duration(),
-                task.max_session_length or best_slot.upper - best_slot.lower,
+                ideal_session_length,
                 best_slot.upper - best_slot.lower
             ) # this intrinsically applies the max session lenth constraint
             

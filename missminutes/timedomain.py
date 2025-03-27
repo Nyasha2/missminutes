@@ -100,14 +100,25 @@ class TimeDomain:
         """Calculate the total available time in this map"""
         total = timedelta()
         for iv in self.time_slots:
-            total += iv.upper - iv.lower
+            for atomic in iv:
+                total += atomic.upper - atomic.lower
         return total
     
     def total_weight(self) -> int:
         """Calculate the total weight of all intervals in this map"""
-        time_slots_dict = self.time_slots.as_dict()
-        return sum(time_slots_dict[iv] for iv in time_slots_dict)
+        total = 0
+        for iv, value in self.time_slots.items():
+            total += value * len(iv)
+        return total
     
+    def total_weight_time(self) -> int:
+        """Calculate the total weight time of all intervals in this map"""
+        total = 0
+        for iv, value in self.time_slots.items():
+            for atomic in iv:
+                total += value * (atomic.upper - atomic.lower).total_seconds()
+        return total
+
     def copy(self) -> 'TimeDomain':
         """Create a deep copy of the TimeDomain"""
         return copy.deepcopy(self)
