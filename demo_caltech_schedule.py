@@ -9,7 +9,7 @@ college schedule with classes, assignments, meals, and other activities.
 from missminutes.scheduler import Scheduler
 from missminutes.tasks import Task, RecurringTask, RecurrencePattern
 from missminutes.timeprofile import TimeProfile, DayOfWeek
-from missminutes.events import Event, RecurringEvent
+from missminutes.events import RecurringEvent
 from datetime import datetime, timedelta
 
 def main():
@@ -221,9 +221,9 @@ def main():
     cs4_assignment = Task(
         title="CS4 Assignment",
         description="Released Thursday, due next Thursday",
-        duration=timedelta(hours=6),
+        duration=timedelta(hours=4),
         min_session_length=timedelta(hours=1),
-        max_session_length=timedelta(hours=2),
+        max_session_length=timedelta(hours=3),
         due=start_date + timedelta(days=10)  # Next Thursday midnight
     )
     cs4_assignment.assign_time_profile(general_profile)

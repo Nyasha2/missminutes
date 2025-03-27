@@ -1,12 +1,9 @@
 from .tasks import Task, RecurringTask, Session
 from .timeprofile import TimeProfile
-from .timedomain import TimeDomain, TimeSlot 
 from .events import Event, RecurringEvent
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
-import heapq
-import copy
-from .constraint_solver import ConstraintSolver, SchedulingDecision
+from .constraint_solver import ConstraintSolver
 from typing import List
 
 @dataclass
@@ -19,7 +16,6 @@ class Scheduler:
     start_date: datetime = field(default_factory=datetime.now)
     days: int = field(default=7)
     solver: ConstraintSolver = field(default_factory=ConstraintSolver)
-    decision_stack: List[SchedulingDecision] = field(default_factory=list)
     
     def add_task(self, task: Task) -> None:
         """Add a task to be scheduled"""

@@ -3,7 +3,7 @@ from typing import Optional
 from dataclasses import dataclass, field
 import uuid
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
-from .timedomain import TimeDomain, TimeSlot
+from .timedomain import TimeDomain
 
 
 @dataclass
@@ -31,10 +31,6 @@ class Event:
         """Check if this event conflicts with another event"""
         return (self.start_time < other.end_time and 
                 self.end_time > other.start_time)
-    
-    def to_time_slot(self) -> TimeSlot:
-        """Convert event to a time slot"""
-        return TimeSlot(self.start_time, self.end_time)
     
     def to_time_domain(self) -> TimeDomain:
         """Convert event to a time domain with a single slot"""

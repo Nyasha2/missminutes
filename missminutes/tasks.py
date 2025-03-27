@@ -162,7 +162,7 @@ class Task:
             # Get time profiles and apply them as constraints
             for profile in self.time_profiles:
                 profile_domain = TimeDomain.from_time_profile(profile, start_date, days)
-                result = result.apply_constraint(profile_domain)
+                result = result.intersection(profile_domain)
         
         assert not result.is_empty(), f'time_domain: Task "{self.title}" domain is empty after applying time profiles'
         return result

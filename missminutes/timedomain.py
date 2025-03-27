@@ -1,63 +1,22 @@
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import copy
-from typing import Optional
-
+from typing import Optional, Callable
+from portion import closed, IntervalDict
 from .timeprofile import DayOfWeek, TimeProfile
-
-@dataclass
-class TimeSlot:
-    """Represents a specific time slot with start and end times"""
-    start: datetime
-    end: datetime
-    
-    @property
-    def duration(self) -> timedelta:
-        return self.end - self.start
-        
-    def overlaps(self, other: 'TimeSlot') -> bool:
-        """Check if this slot overlaps with another"""
-        return (self.start < other.end and self.end > other.start)
-    
-    def contains(self, dt: datetime) -> bool:
-        """Check if this slot contains the given datetime"""
-        return self.start <= dt < self.end
-    
-    def __hash__(self) -> int:
-        return hash((self.start, self.end))
-    
-    def __str__(self) -> str:
-        if self.start.date() == self.end.date():
-            return f"{self.start.strftime('%Y-%m-%d %H:%M')} - {self.end.strftime('%H:%M')} ({self.duration})"
-        else:
-            return f"{self.start.strftime('%Y-%m-%d %H:%M')} - {self.end.strftime('%Y-%m-%d %H:%M')} ({self.duration})"
-
 
 @dataclass
 class TimeDomain:
     """A collection of available time slots within a scheduling period"""
-    time_slots: list[TimeSlot] = field(default_factory=list)
+    time_slots: IntervalDict = field(default_factory=IntervalDict)
     
-    def add_slot(self, start: datetime, end: datetime) -> None:
+    def add_slot(self, start: datetime, end: datetime, weight: int = 1) -> None:
         """Add a time slot to the map"""
-        self.time_slots.append(TimeSlot(start, end))
+        self.time_slots[closed(start, end)] = weight
     
-    def remove_slot(self, slot: TimeSlot) -> None:
+    def remove_slot(self, start: datetime, end: datetime) -> None:
         """Remove a specific slot from the map"""
-        self.time_slots.remove(slot)
-    
-    def find_conflicts(self, other: 'TimeDomain') -> list[tuple[TimeSlot, TimeSlot]]:
-        """Find conflicts between this map and another"""
-        conflicts = []
-        for slot1 in self.time_slots:
-            for slot2 in other.time_slots:
-                if slot1.overlaps(slot2):
-                    conflicts.append((slot1, slot2))
-        return conflicts
-    
-    def is_time_available(self, start: datetime, end: datetime) -> bool:
-        """Check if a specific time range is available"""
-        return not any(slot.overlaps(TimeSlot(start, end)) for slot in self.time_slots)
+        self.time_slots.pop(closed(start, end), None)
     
     @classmethod
     def from_time_profile(cls, profile: TimeProfile, start_date: datetime, 
@@ -87,89 +46,67 @@ class TimeDomain:
         
         return time_domain
 
-    def apply_constraint(self, constraint: 'TimeDomain') -> 'TimeDomain':
-        """Apply constraint by finding intersection with another TimeDomain"""
-        result = TimeDomain()
-        
-        for slot1 in self.time_slots:
-            for slot2 in constraint.time_slots:
-                # Find intersection of slots
-                if slot1.overlaps(slot2):
-                    intersection_start = max(slot1.start, slot2.start)
-                    intersection_end = min(slot1.end, slot2.end)
-                    result.add_slot(intersection_start, intersection_end)
-        
-        return result
+    def add(self, other: 'TimeDomain') -> 'TimeDomain':
+        """Add another TimeDomain to this one (this + other)"""
+        result = self.time_slots.combine(other.time_slots, lambda a, b: a + b)
+        return TimeDomain(result)
 
     def subtract(self, other: 'TimeDomain') -> None:
-        """Subtract another TimeDomain from this one (this - other)"""        
-        # For each slot in the other TimeDomain, remove its overlap from result
-        for other_slot in other.time_slots:
-            self.subtract_slot(other_slot)
-            
-    def subtract_slot(self, subtract_slot: TimeSlot) -> None:
-        """
-        Subtract a time slot from this TimeDomain
-        Removes the overlapping portions of any slots in this domain
-        """
-        for slot in list(self.time_slots):  # Create a copy to avoid modification during iteration
-            if slot.overlaps(subtract_slot):
-                self._handle_slot_subtract(slot, subtract_slot)
-                
-    def _handle_slot_subtract(self, slot: TimeSlot, subtract_slot: TimeSlot) -> None:
-        """
-        Handle subtraction of one slot from another
-        Removes the original slot and adds back non-overlapping portions
-        """
-        # Remove the original slot
-        self.remove_slot(slot)
-        
-        # Case 1: Subtraction completely contains the slot - nothing to add back
-        if subtract_slot.start <= slot.start and subtract_slot.end >= slot.end:
-            return
-        
-        # Case 2: Subtraction splits the slot into two parts
-        elif subtract_slot.start > slot.start and subtract_slot.end < slot.end:
-            self.add_slot(slot.start, subtract_slot.start)
-            self.add_slot(subtract_slot.end, slot.end)
-        
-        # Case 3: Subtraction covers the beginning of the slot
-        elif subtract_slot.start <= slot.start and subtract_slot.end > slot.start and subtract_slot.end < slot.end:
-            self.add_slot(subtract_slot.end, slot.end)
-            
-        # Case 4: Subtraction covers the end of the slot
-        elif subtract_slot.start > slot.start and subtract_slot.start < slot.end and subtract_slot.end >= slot.end:
-            self.add_slot(slot.start, subtract_slot.start)
-                
-                
-    def trim_left(self, time_point : datetime) -> None:
-        """Trim all slots to the left of the given time point"""
-        for slot in sorted(self.time_slots, key=lambda x: x.start):
-            if slot.end < time_point:
-                self.remove_slot(slot)
-            elif slot.start < time_point:
-                self.add_slot(time_point, slot.end)
-                self.remove_slot(slot)
-                break
-            else:
-                break
+        """Subtract another TimeDomain from this one (this - other). Returns 
+        this TimeDomain with the intersecting values for intersecting intervals 
+        subtracted"""        
+        result = self.time_slots.combine(other.time_slots, lambda a, b: a - b)
+        result = result[self.time_slots.domain()] 
+        return TimeDomain(result)
+    
+    def combine(self, other: 'TimeDomain', how: Callable[[int, int], int]) -> 'TimeDomain':
+        """Combine two TimeDomains using a custom function to combine data values"""
+        result = self.time_slots.combine(other.time_slots, how)
+        return TimeDomain(result)
+    
+    def trim_left(self, point: datetime) -> None:
+        """Trim all intervals to the left of point"""
+        domain_upper = self.time_slots.domain().upper
+        self.time_slots = self.time_slots[closed(point, domain_upper)]
+    
+    def trim_right(self, point: datetime) -> None:
+        """Trim all intervals to the right of point"""
+        domain_lower = self.time_slots.domain().lower
+        self.time_slots = self.time_slots[closed(domain_lower, point)]
+    
+    # set like operations
+    def difference(self, other: 'TimeDomain') -> 'TimeDomain':
+        """Return the difference between this TimeDomain and another (this - other). Returns 
+        a new TimeDomain with intervals in this that are not in other, data values of this
+        unchanged."""
+        result = self.time_slots[self.time_slots.domain() - other.time_slots.domain()] 
+        return TimeDomain(result)
+    
+    def intersection(self, other: 'TimeDomain') -> 'TimeDomain':
+        """Return the intersection of this TimeDomain and another (this & other). Returns 
+        a new TimeDomain with intervals in both this and other, data values of this
+        unchanged."""
+        result = self.time_slots[other.time_slots.domain()]
+        return TimeDomain(result)
+    
+    def union(self, other: 'TimeDomain') -> 'TimeDomain':
+        """Return the union of this TimeDomain and another (this | other). Returns 
+        a new TimeDomain with intervals in either this or other, data values of this
+        unchanged."""
+        result = self.time_slots.combine(other.time_slots, lambda a, _: a)
+        return TimeDomain(result)
 
-    def trim_right(self, time_point : datetime) -> None:
-        """Trim all slots to the right of the given time point"""
-        for slot in sorted(self.time_slots, key=lambda x: x.start, reverse=True):
-            if slot.start >= time_point:
-                self.remove_slot(slot)
-            elif slot.end > time_point:
-                self.add_slot(slot.start, time_point)
-                self.remove_slot(slot)
-                break
-            else:
-                break
-
-
-    def total_available_time(self) -> timedelta:
+    def total_time(self) -> timedelta:
         """Calculate the total available time in this map"""
-        return sum((slot.duration for slot in self.time_slots), timedelta())
+        total = timedelta()
+        for iv in self.time_slots:
+            total += iv.upper - iv.lower
+        return total
+    
+    def total_weight(self) -> int:
+        """Calculate the total weight of all intervals in this map"""
+        time_slots_dict = self.time_slots.as_dict()
+        return sum(time_slots_dict[iv] for iv in time_slots_dict)
     
     def copy(self) -> 'TimeDomain':
         """Create a deep copy of the TimeDomain"""
@@ -178,18 +115,13 @@ class TimeDomain:
     def is_empty(self) -> bool:
         """Check if domain has any viable slots"""
         return len(self.time_slots) == 0
-
-    def get_earliest_slot(self) -> Optional[TimeSlot]:
-        """Get the earliest available slot"""
-        return min(self.time_slots, key=lambda s: s.start) if self.time_slots else None
-
     
     def __str__(self) -> str:
         """Return a string representation of the TimeDomain"""
         if not self.time_slots:
             return "Empty TimeDomain"
         
-        slots_str = "\n".join([f"  {slot.start.strftime('%Y-%m-%d %H:%M')} - {slot.end.strftime('%Y-%m-%d %H:%M')}" for slot in self.time_slots])
+        slots_str = "\n".join([f"  {slot.lower.strftime('%Y-%m-%d %H:%M')} - {slot.upper.strftime('%Y-%m-%d %H:%M')}" for slot in self.time_slots])
         return f"TimeDomain with {len(self.time_slots)} slots:\n{slots_str}"
     
     def visualize(self, start_date: Optional[datetime] = None, days: int = 7) -> None:
@@ -207,7 +139,7 @@ class TimeDomain:
         if start_date is None:
             if self.time_slots:
                 # Use the earliest slot date
-                start_date = min(slot.start for slot in self.time_slots)
+                start_date = self.time_slots.domain().lower
             else:
                 # Default to today
                 start_date = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -219,17 +151,14 @@ class TimeDomain:
         end_date = start_date + timedelta(days=days)
         
         # Filter slots that fall within our visualization range
-        visible_slots = [
-            slot for slot in self.time_slots 
-            if slot.end > start_date and slot.start < end_date
-        ]
+        visible_slots = self.time_slots[closed(start_date, end_date)]
         
         if not visible_slots:
             return f"No time slots to visualize between {start_date.strftime('%Y-%m-%d')} and {end_date.strftime('%Y-%m-%d')}"
         
         # Determine the hour range to display (default 8am-8pm if no slots in range)
-        min_hour = min((slot.start.hour for slot in visible_slots), default=8)
-        max_hour = max((slot.end.hour for slot in visible_slots), default=20)
+        min_hour = min((slot.lower.hour for slot in visible_slots), default=8)
+        max_hour = max((slot.upper.hour for slot in visible_slots), default=20)
         
         min_hour = max(0, min(min_hour, 0))
         max_hour = min(23, max(max_hour, 23))
@@ -257,11 +186,7 @@ class TimeDomain:
                 hour_start = current_date.replace(hour=hour, minute=0)
                 hour_end = hour_start + timedelta(hours=1)
                 
-                # Check if any slot overlaps with this hour
-                has_slot = any(
-                    slot.overlaps(TimeSlot(hour_start, hour_end))
-                    for slot in visible_slots
-                )
+                has_slot = visible_slots.domain().overlaps(closed(hour_start, hour_end))
                 
                 if has_slot:
                     hour_str += " ███████████ |"

@@ -12,7 +12,7 @@ from .events import (
 )
 
 from .timeprofile import DayOfWeek, TimeWindow, DaySchedule, TimeProfile
-from .timedomain import TimeSlot, TimeDomain
+from .timedomain import TimeDomain
 from .scheduler import Scheduler
 
 __all__ = [
@@ -20,5 +20,5 @@ __all__ = [
     "TimeWindow", "DaySchedule", "TimeProfile",
     "Task", "RecurringTask", "Session",
     "Event", "RecurringEvent",
-    "TimeSlot", "TimeDomain", "Scheduler",
+    "TimeDomain", "Scheduler",
 ] 
