@@ -1,0 +1,176 @@
+/* Calendar-specific styles */
+.header {
+  background-color: #24283b;
+  padding: 8px;
+  font-weight: 600;
+  border-bottom: 1px solid #414868;
+  border-right: 1px solid #414868;
+  font-size: 0.8rem;
+  color: #7aa2f7;
+  position: sticky;
+  top: 0;
+  z-index: 2; /* Ensure headers stay above content */
+}
+
+/* Add this to ensure the time column header stays above regular headers */
+.header.time-header {
+  z-index: 3;
+  left: 0;
+}
+
+/* Terminal-style cursor effect in the header */
+.header::after {
+  content: "_";
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.time-column {
+  display: grid;
+  grid-template-rows: repeat(16, 45px); /* Reduced row height */
+  border-right: 1px solid #414868;
+  background-color: #1a1b26;
+}
+
+.time-slot {
+  font-size: 0.75rem;
+  color: #a9b1d6;
+  padding: 2px 8px;
+  border-bottom: 1px solid #414868;
+  height: 45px; /* Match grid-template-rows */
+  box-sizing: border-box;
+}
+
+.day-column {
+  position: relative;
+  border-right: 1px solid #414868;
+  background-color: #1a1b26;
+  background-size: 100% 45px;
+  /* Grid lines */
+  background-image: linear-gradient(
+    to bottom,
+    rgba(65, 72, 104, 0.2) 1px,
+    transparent 1px
+  );
+  background-size: 100% 45px;
+  background-position: 0 0;
+}
+
+.day-column:last-child {
+  border-right: none;
+}
+
+.event {
+  margin: 2px;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 0.9rem;
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  box-sizing: border-box;
+  border: 2px solid;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.event.session {
+  background-color: rgba(73, 189, 151, 0.2);
+  border-color: #49bd97;
+  color: #49bd97;
+}
+
+.event.event-type {
+  background-color: rgba(187, 128, 255, 0.2);
+  border-color: #bb80ff;
+  color: #bb80ff;
+}
+
+.event:hover {
+  box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
+  transform: translateY(-1px);
+}
+
+.time {
+  font-size: 0.65rem;
+  opacity: 0.8;
+  margin-bottom: 2px;
+  white-space: nowrap;
+}
+
+.title {
+  font-weight: 500;
+  font-size: 0.9rem;
+}
+
+/* Small events */
+.event[style*="height: 25px"],
+.event[style*="height: 15px"],
+.event[style*="height: 10px"] {
+  font-size: 0.8rem;
+  padding: 1px 4px;
+}
+
+.event[style*="height: 25px"] .time,
+.event[style*="height: 15px"] .time,
+.event[style*="height: 10px"] .time {
+  font-size: 0.6rem;
+}
+
+/* Tooltip styles */
+.event-tooltip {
+  position: absolute;
+  background-color: #24283b;
+  border: 1px solid #414868;
+  border-radius: 8px;
+  padding: 8px;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(122, 162, 247, 0.3);
+  min-width: 150px;
+  max-width: 250px;
+  display: none;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.8rem;
+}
+
+.event-tooltip.visible {
+  display: block;
+}
+
+.tooltip-time {
+  font-size: 0.75rem;
+  color: #7aa2f7;
+  margin-bottom: 4px;
+  font-weight: 400;
+}
+
+.tooltip-title {
+  font-size: 0.8rem;
+  color: #c0caf5;
+}
+
+/* ... rest of calendar-specific styles ... */
+
+/* Update calendar container styles */
+.calendar-container {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  min-width: 100%; /* Increased from 900px */
+  max-width: 1800px; /* Added max-width */
+  overflow: auto;
+  border: 1px solid #414868;
+  background-color: #1a1b26;
+}
+
+/* Ensure the nav stays fixed */
+.calendar-nav {
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background-color: #24283b;
+}

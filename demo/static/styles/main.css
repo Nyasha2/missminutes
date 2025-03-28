@@ -26,6 +26,13 @@ body {
   gap: 15px;
   max-width: 1400px;
   margin: 0 auto;
+  overflow: hidden;
+}
+
+/* Add this for calendar view specifically */
+.container.calendar-view {
+  overflow: auto;
+  min-width: 900px;
 }
 
 /* Navigation bar */
@@ -339,4 +346,35 @@ body {
 
 .time-grid-cell.selected[data-profile-color]:hover {
   background-color: color-mix(in srgb, var(--profile-color) 90%, white);
+}
+
+/* Add these navigation button styles */
+.nav-button {
+  padding: 6px 12px;
+  background-color: #1a1b26;
+  border: 1px solid #7aa2f7;
+  color: #7aa2f7;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  font-size: 0.8rem;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.nav-button:hover {
+  background-color: rgba(122, 162, 247, 0.1);
+  transform: translateY(-1px);
+  box-shadow: 0 0 10px rgba(122, 162, 247, 0.2);
+}
+
+.nav-button:active {
+  transform: translateY(0);
+}
+
+.date-range {
+  font-size: 0.9rem;
+  color: #7aa2f7;
+  font-weight: 500;
 }

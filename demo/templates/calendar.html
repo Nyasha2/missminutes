@@ -10,279 +10,11 @@
       href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap"
       rel="stylesheet"
     />
-    <style>
-      body {
-        background-color: #1a1b26;
-        color: #a9b1d6;
-        font-size: 14px;
-        margin: 0;
-        padding: 0;
-        min-height: 100vh;
-      }
-
-      * {
-        font-family: "JetBrains Mono", monospace;
-        box-sizing: border-box;
-      }
-
-      .container {
-        padding: 20px 20px 80px 20px;
-      }
-
-      .calendar-nav {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 12px;
-        background-color: #24283b;
-        margin-bottom: 8px;
-        border-radius: 8px;
-        border: 1px solid #414868;
-      }
-
-      .nav-button {
-        padding: 6px 12px;
-        background-color: #1a1b26;
-        border: 1px solid #7aa2f7;
-        border-radius: 6px;
-        cursor: pointer;
-        font-weight: 500;
-        font-size: 0.8rem;
-        color: #7aa2f7;
-        transition: all 0.2s ease;
-      }
-
-      .nav-button:hover {
-        background-color: #7aa2f7;
-        color: #1a1b26;
-      }
-
-      .nav-bar {
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background-color: #24283b;
-        border: 1px solid #414868;
-        border-radius: 25px;
-        padding: 10px 20px;
-        display: flex;
-        gap: 20px;
-        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-        z-index: 1000;
-        backdrop-filter: blur(10px);
-        -webkit-backdrop-filter: blur(10px);
-      }
-
-      .nav-item {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        color: #7aa2f7;
-        text-decoration: none;
-        padding: 8px 16px;
-        border-radius: 20px;
-        transition: all 0.2s ease;
-        position: relative;
-        overflow: hidden;
-      }
-
-      .nav-item::before {
-        content: "";
-        position: absolute;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: linear-gradient(
-          45deg,
-          transparent,
-          rgba(122, 162, 247, 0.1),
-          transparent
-        );
-        transform: translateX(-100%);
-        transition: transform 0.3s ease;
-      }
-
-      .nav-item:hover::before {
-        transform: translateX(100%);
-      }
-
-      .nav-item:hover {
-        background-color: rgba(122, 162, 247, 0.1);
-        transform: translateY(-2px);
-      }
-
-      .nav-item.active {
-        background-color: rgba(122, 162, 247, 0.2);
-        box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
-      }
-
-      .date-range {
-        font-size: 0.9rem;
-      }
-
-      .calendar-container {
-        display: grid;
-        grid-template-columns: 60px repeat(7, 1fr); /* Changed from 5 to 7 columns */
-        min-width: 800px;
-        max-width: 1400px; /* Increased to accommodate more columns */
-        margin: 0 auto;
-        border: 1px solid #414868;
-        background-color: #1a1b26;
-      }
-
-      .header {
-        background-color: #24283b;
-        padding: 8px;
-        font-weight: 600;
-        border-bottom: 1px solid #414868;
-        border-right: 1px solid #414868;
-        font-size: 0.8rem;
-        color: #7aa2f7;
-      }
-
-      .time-column {
-        display: grid;
-        grid-template-rows: repeat(16, 45px); /* Reduced row height */
-        border-right: 1px solid #414868;
-        background-color: #1a1b26;
-      }
-
-      .time-slot {
-        font-size: 0.75rem;
-        color: #a9b1d6;
-        padding: 2px 8px;
-        border-bottom: 1px solid #414868;
-        height: 45px; /* Match grid-template-rows */
-        box-sizing: border-box;
-      }
-
-      .day-column {
-        position: relative;
-        border-right: 1px solid #414868;
-        background-color: #1a1b26;
-        background-size: 100% 45px; /* Match new row height */
-      }
-
-      .day-column:last-child {
-        border-right: none;
-      }
-
-      .event {
-        margin: 2px;
-        padding: 4px 6px;
-        border-radius: 4px;
-        font-size: 0.9rem;
-        position: absolute;
-        left: 4px;
-        right: 4px;
-        box-sizing: border-box;
-        border: 2px solid;
-        overflow: hidden;
-        transition: all 0.2s ease;
-      }
-
-      .event.session {
-        background-color: rgba(73, 189, 151, 0.2);
-        border-color: #49bd97;
-        color: #49bd97;
-      }
-
-      .event.event-type {
-        background-color: rgba(187, 128, 255, 0.2);
-        border-color: #bb80ff;
-        color: #bb80ff;
-      }
-
-      .event:hover {
-        box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
-        transform: translateY(-1px);
-      }
-
-      .time {
-        font-size: 0.65rem; /* Much smaller time text */
-        opacity: 0.8;
-        margin-bottom: 2px;
-        white-space: nowrap; /* Prevent time from wrapping */
-      }
-
-      .title {
-        font-weight: 500;
-        font-size: 0.9rem; /* Keep title size the same */
-      }
-
-      .event-tooltip {
-        position: absolute;
-        background-color: #24283b;
-        border: 1px solid #414868;
-        border-radius: 8px;
-        padding: 8px;
-        z-index: 1000;
-        box-shadow: 0 0 20px rgba(122, 162, 247, 0.3);
-        min-width: 150px;
-        max-width: 250px;
-        display: none;
-        font-family: "JetBrains Mono", monospace;
-        font-size: 0.8rem;
-      }
-
-      .event-tooltip.visible {
-        display: block;
-      }
-
-      .tooltip-time {
-        font-size: 0.75rem;
-        color: #7aa2f7;
-        margin-bottom: 4px;
-        font-weight: 400;
-      }
-
-      .tooltip-title {
-        font-size: 0.8rem;
-        color: #c0caf5;
-      }
-
-      /* Grid lines */
-      .day-column {
-        background-image: linear-gradient(
-          to bottom,
-          rgba(65, 72, 104, 0.2) 1px,
-          transparent 1px
-        );
-        background-size: 100% 45px;
-        background-position: 0 0;
-      }
-
-      /* Small events */
-      .event[style*="height: 25px"],
-      .event[style*="height: 15px"],
-      .event[style*="height: 10px"] {
-        font-size: 0.8rem;
-        padding: 1px 4px;
-      }
-
-      .event[style*="height: 25px"] .time,
-      .event[style*="height: 15px"] .time,
-      .event[style*="height: 10px"] .time {
-        font-size: 0.6rem;
-      }
-
-      /* Terminal-style cursor effect in the header */
-      .header::after {
-        content: "_";
-        animation: blink 1s step-end infinite;
-      }
-
-      @keyframes blink {
-        50% {
-          opacity: 0;
-        }
-      }
-    </style>
+    <link rel="stylesheet" href="/static/styles/main.css" />
+    <link rel="stylesheet" href="/static/styles/calendar.css" />
   </head>
   <body>
-    <div class="container">
+    <div class="container calendar-view">
       <div class="calendar-nav">
         <button class="nav-button" onclick="navigateWeek(-1)">
           Previous Week
@@ -292,7 +24,10 @@
       </div>
 
       <div class="calendar-container">
-        <!-- Headers will be dynamically inserted -->
+        <div class="header time-header">Time</div>
+        <div class="header">Mon</div>
+        <div class="header">Tue</div>
+        <!-- ... other day headers ... -->
       </div>
 
       <!-- Add tooltip container -->
@@ -416,7 +151,7 @@
         const container = document.querySelector(".calendar-container");
         container.innerHTML = `
           <!-- Headers -->
-          <div class="header">Time</div>
+          <div class="header time-header">Time</div>
           ${dates
             .map(
               (date) => `
