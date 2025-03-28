@@ -1,0 +1,342 @@
+/* Base styles */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100vh;
+  overflow: hidden;
+}
+
+body {
+  background-color: #1a1b26;
+  color: #a9b1d6;
+  font-size: 14px;
+}
+
+* {
+  font-family: "JetBrains Mono", monospace;
+  box-sizing: border-box;
+}
+
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 20px 80px 20px;
+  gap: 15px;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Navigation bar */
+.nav-bar {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background-color: #24283b;
+  border: 1px solid #414868;
+  border-radius: 25px;
+  padding: 10px 20px;
+  display: flex;
+  gap: 20px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7aa2f7;
+  text-decoration: none;
+  padding: 8px 16px;
+  border-radius: 20px;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.nav-item::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    45deg,
+    transparent,
+    rgba(122, 162, 247, 0.1),
+    transparent
+  );
+  transform: translateX(-100%);
+  transition: transform 0.3s ease;
+}
+
+.nav-item:hover::before {
+  transform: translateX(100%);
+}
+
+.nav-item:hover {
+  background-color: rgba(122, 162, 247, 0.1);
+  transform: translateY(-2px);
+}
+
+.nav-item.active {
+  background-color: rgba(122, 162, 247, 0.2);
+  box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
+}
+
+/* Calendar specific styles */
+.calendar-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px;
+  background-color: #24283b;
+  margin-bottom: 8px;
+  border-radius: 8px;
+  border: 1px solid #414868;
+}
+
+.calendar-container {
+  display: grid;
+  grid-template-columns: 60px repeat(7, 1fr);
+  min-width: 800px;
+  max-width: 1400px;
+  margin: 0 auto;
+  border: 1px solid #414868;
+  background-color: #1a1b26;
+}
+
+/* Panel styling */
+.panel {
+  background-color: #24283b;
+  border: 1px solid #414868;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.corner-decoration {
+  position: absolute;
+  width: 50px;
+  height: 50px;
+  border: 2px solid #7aa2f7;
+  opacity: 0.5;
+}
+
+.corner-decoration.top-left {
+  top: -10px;
+  left: -10px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.corner-decoration.bottom-right {
+  bottom: -10px;
+  right: -10px;
+  border-left: none;
+  border-top: none;
+}
+
+/* Tabs styling */
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.tab {
+  padding: 8px 16px;
+  background-color: #1a1b26;
+  border: 1px solid #414868;
+  color: #7aa2f7;
+  cursor: pointer;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-size: 0.9rem;
+}
+
+.tab:hover {
+  background-color: rgba(122, 162, 247, 0.1);
+  transform: translateY(-1px);
+}
+
+.tab.active {
+  background-color: #24283b;
+  border-color: #7aa2f7;
+  box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
+}
+
+/* Tab content */
+.tab-content {
+  display: none;
+  height: 0;
+}
+
+.tab-content.active {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  position: relative;
+  background-color: #1a1b26;
+}
+
+.tab-content.active::before {
+  content: "";
+  position: absolute;
+  top: -5px;
+  left: -5px;
+  width: 15px;
+  height: 15px;
+  border-top: 2px solid #7aa2f7;
+  border-left: 2px solid #7aa2f7;
+  opacity: 0.5;
+}
+
+.tab-content.active::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  right: -5px;
+  width: 15px;
+  height: 15px;
+  border-bottom: 2px solid #7aa2f7;
+  border-right: 2px solid #7aa2f7;
+  opacity: 0.5;
+}
+
+/* Profile selector layout */
+.profiles-layout {
+  display: flex;
+  gap: 20px;
+  height: 100%;
+}
+
+.profile-selector {
+  width: 200px;
+  background: #1f2335;
+  border-radius: 8px;
+  border: 1px solid #414868;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.profile-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px;
+}
+
+.profile-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 12px;
+  margin-bottom: 4px;
+  border-radius: 6px;
+  background: #24283b;
+  border: 1px solid transparent;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.profile-color-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.profile-item:hover .profile-color-indicator {
+  transform: scale(1.1);
+  box-shadow: 0 0 10px currentColor;
+}
+
+.profile-item.active .profile-color-indicator {
+  transform: scale(1.2);
+  box-shadow: 0 0 15px currentColor;
+}
+
+.profile-name {
+  color: #a9b1d6;
+  font-size: 0.9rem;
+  user-select: none;
+}
+
+.profile-name.editing {
+  background: #1a1b26;
+  border: 1px solid #414868;
+  border-radius: 4px;
+  padding: 2px 6px;
+  outline: none;
+}
+
+.delete-profile {
+  opacity: 0;
+  background: none;
+  border: none;
+  color: #f7768e;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.profile-item:hover .delete-profile {
+  opacity: 1;
+}
+
+.delete-profile:hover {
+  background: rgba(247, 118, 142, 0.1);
+}
+
+.delete-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+.add-profile-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #24283b;
+  border: none;
+  border-top: 1px solid #414868;
+  color: #7aa2f7;
+  padding: 12px;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.add-profile-btn:hover {
+  background: #292e42;
+}
+
+.plus-icon {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* Update time grid cell selected state for different profiles */
+.time-grid-cell.selected[data-profile-color] {
+  background-color: var(--profile-color);
+  box-shadow: inset 0 0 8px color-mix(in srgb, var(--profile-color) 80%, black),
+    0 0 15px color-mix(in srgb, var(--profile-color) 40%, transparent);
+  border-color: var(--profile-color);
+}
+
+.time-grid-cell.selected[data-profile-color]:hover {
+  background-color: color-mix(in srgb, var(--profile-color) 90%, white);
+}

@@ -56,9 +56,16 @@ def sorted_slots(domain: TimeDomain, domain_overlaps: TimeDomain, task: Task, id
     
     table_data = []
     
-    for interval, overlap_weight in intersection.time_slots.items():
+    for interval in intersection.time_slots.domain():
         for atomic in interval:
             duration = atomic.upper - atomic.lower
+            overlap_weight = 0
+            
+            for iv, weight in intersection.time_slots[atomic].items():
+                overlap = atomic.intersection(iv)
+                overlap_weight += weight * (overlap.upper - overlap.lower).total_seconds()
+                
+            overlap_weight /= duration.total_seconds()
             
             # Multiple scoring factors:
             overlap_score = overlap_weight 
@@ -88,7 +95,7 @@ def sorted_slots(domain: TimeDomain, domain_overlaps: TimeDomain, task: Task, id
     headers = ["Start", "End", "Duration", "Overlap", "Length Fit", "Deadline Proximity", "Score"]
     sorted_table_data = sorted(table_data, key=lambda x: x[6])
     print(f"Slots for task {task.title}:")
-    print(tabulate(sorted_table_data, headers=headers, tablefmt="grid"))
+    print(tabulate(sorted_table_data, headers=headers, tablefmt="github"))
     return sorted(slots_with_scores, key=lambda x: x[1])
 
 def apply_min_session_length_constraint(domain: TimeDomain, min_session_length: timedelta) -> None:
@@ -193,7 +200,7 @@ class ConstraintSolver:
             table_data.append([task.title, topo_rank, -neg_pressure_score, overlap_metric, domain_ratio, remaining_duration, due_in])
 
         headers = ["Task", "TopoRank", "Pressure", "Avg Overlap", "Domain:Duration", "Duration", "Due"]
-        print(tabulate(table_data, headers=headers, tablefmt="grid"))
+        print(tabulate(table_data, headers=headers, tablefmt="github"))
         print("Finished presolve")
         return interval_overlaps, sorted_tasks_with_domains
     

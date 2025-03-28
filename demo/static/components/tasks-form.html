@@ -1,0 +1,38 @@
+<form hx-post="/api/add_task" hx-target="#tasks-list">
+  <div class="form-group">
+    <label>Task Title</label>
+    <input type="text" name="title" required />
+  </div>
+  <div class="form-group">
+    <label>Description</label>
+    <textarea name="description"></textarea>
+  </div>
+  <div class="form-group">
+    <label>Duration (hours)</label>
+    <input type="number" name="duration_hours" min="0" required />
+  </div>
+  <div class="form-group">
+    <label>Duration (minutes)</label>
+    <input type="number" name="duration_minutes" min="0" max="59" required />
+  </div>
+  <div class="form-group">
+    <label>Min Session Length (hours)</label>
+    <input type="number" name="min_session" min="0" step="0.5" required />
+  </div>
+  <div class="form-group">
+    <label>Max Session Length (hours)</label>
+    <input type="number" name="max_session" min="0" step="0.5" required />
+  </div>
+  <div class="form-group">
+    <label>Due in (days)</label>
+    <input type="number" name="due_days" min="1" required />
+  </div>
+  <div class="form-group">
+    <label>Time Profile</label>
+    <select name="time_profile">
+      <option value="">None</option>
+      <!-- Will be populated dynamically -->
+    </select>
+  </div>
+  <button class="button" type="submit">Add Task</button>
+</form>

@@ -1,0 +1,25 @@
+<form hx-post="/api/add_event" hx-target="#events-list">
+  <div class="form-group">
+    <label>Event Title</label>
+    <input type="text" name="title" required />
+  </div>
+  <div class="form-group">
+    <label>Days</label>
+    <select name="days" multiple required>
+      <option value="MONDAY">Monday</option>
+      <option value="TUESDAY">Tuesday</option>
+      <option value="WEDNESDAY">Wednesday</option>
+      <option value="THURSDAY">Thursday</option>
+      <option value="FRIDAY">Friday</option>
+    </select>
+  </div>
+  <div class="form-group">
+    <label>Start Time</label>
+    <input type="time" name="start_time" required />
+  </div>
+  <div class="form-group">
+    <label>End Time</label>
+    <input type="time" name="end_time" required />
+  </div>
+  <button class="button" type="submit">Add Event</button>
+</form>

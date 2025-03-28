@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Calendar View</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <!-- Using JetBrains Mono for that terminal feel -->
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      body {
+        background-color: #1a1b26;
+        color: #a9b1d6;
+        font-size: 14px;
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+      }
+
+      * {
+        font-family: "JetBrains Mono", monospace;
+        box-sizing: border-box;
+      }
+
+      .container {
+        padding: 20px 20px 80px 20px;
+      }
+
+      .calendar-nav {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px;
+        background-color: #24283b;
+        margin-bottom: 8px;
+        border-radius: 8px;
+        border: 1px solid #414868;
+      }
+
+      .nav-button {
+        padding: 6px 12px;
+        background-color: #1a1b26;
+        border: 1px solid #7aa2f7;
+        border-radius: 6px;
+        cursor: pointer;
+        font-weight: 500;
+        font-size: 0.8rem;
+        color: #7aa2f7;
+        transition: all 0.2s ease;
+      }
+
+      .nav-button:hover {
+        background-color: #7aa2f7;
+        color: #1a1b26;
+      }
+
+      .nav-bar {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #24283b;
+        border: 1px solid #414868;
+        border-radius: 25px;
+        padding: 10px 20px;
+        display: flex;
+        gap: 20px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        z-index: 1000;
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+      }
+
+      .nav-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #7aa2f7;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 20px;
+        transition: all 0.2s ease;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .nav-item::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          45deg,
+          transparent,
+          rgba(122, 162, 247, 0.1),
+          transparent
+        );
+        transform: translateX(-100%);
+        transition: transform 0.3s ease;
+      }
+
+      .nav-item:hover::before {
+        transform: translateX(100%);
+      }
+
+      .nav-item:hover {
+        background-color: rgba(122, 162, 247, 0.1);
+        transform: translateY(-2px);
+      }
+
+      .nav-item.active {
+        background-color: rgba(122, 162, 247, 0.2);
+        box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
+      }
+
+      .date-range {
+        font-size: 0.9rem;
+      }
+
+      .calendar-container {
+        display: grid;
+        grid-template-columns: 60px repeat(7, 1fr); /* Changed from 5 to 7 columns */
+        min-width: 800px;
+        max-width: 1400px; /* Increased to accommodate more columns */
+        margin: 0 auto;
+        border: 1px solid #414868;
+        background-color: #1a1b26;
+      }
+
+      .header {
+        background-color: #24283b;
+        padding: 8px;
+        font-weight: 600;
+        border-bottom: 1px solid #414868;
+        border-right: 1px solid #414868;
+        font-size: 0.8rem;
+        color: #7aa2f7;
+      }
+
+      .time-column {
+        display: grid;
+        grid-template-rows: repeat(16, 45px); /* Reduced row height */
+        border-right: 1px solid #414868;
+        background-color: #1a1b26;
+      }
+
+      .time-slot {
+        font-size: 0.75rem;
+        color: #a9b1d6;
+        padding: 2px 8px;
+        border-bottom: 1px solid #414868;
+        height: 45px; /* Match grid-template-rows */
+        box-sizing: border-box;
+      }
+
+      .day-column {
+        position: relative;
+        border-right: 1px solid #414868;
+        background-color: #1a1b26;
+        background-size: 100% 45px; /* Match new row height */
+      }
+
+      .day-column:last-child {
+        border-right: none;
+      }
+
+      .event {
+        margin: 2px;
+        padding: 4px 6px;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        position: absolute;
+        left: 4px;
+        right: 4px;
+        box-sizing: border-box;
+        border: 2px solid;
+        overflow: hidden;
+        transition: all 0.2s ease;
+      }
+
+      .event.session {
+        background-color: rgba(73, 189, 151, 0.2);
+        border-color: #49bd97;
+        color: #49bd97;
+      }
+
+      .event.event-type {
+        background-color: rgba(187, 128, 255, 0.2);
+        border-color: #bb80ff;
+        color: #bb80ff;
+      }
+
+      .event:hover {
+        box-shadow: 0 0 15px rgba(122, 162, 247, 0.3);
+        transform: translateY(-1px);
+      }
+
+      .time {
+        font-size: 0.65rem; /* Much smaller time text */
+        opacity: 0.8;
+        margin-bottom: 2px;
+        white-space: nowrap; /* Prevent time from wrapping */
+      }
+
+      .title {
+        font-weight: 500;
+        font-size: 0.9rem; /* Keep title size the same */
+      }
+
+      .event-tooltip {
+        position: absolute;
+        background-color: #24283b;
+        border: 1px solid #414868;
+        border-radius: 8px;
+        padding: 8px;
+        z-index: 1000;
+        box-shadow: 0 0 20px rgba(122, 162, 247, 0.3);
+        min-width: 150px;
+        max-width: 250px;
+        display: none;
+        font-family: "JetBrains Mono", monospace;
+        font-size: 0.8rem;
+      }
+
+      .event-tooltip.visible {
+        display: block;
+      }
+
+      .tooltip-time {
+        font-size: 0.75rem;
+        color: #7aa2f7;
+        margin-bottom: 4px;
+        font-weight: 400;
+      }
+
+      .tooltip-title {
+        font-size: 0.8rem;
+        color: #c0caf5;
+      }
+
+      /* Grid lines */
+      .day-column {
+        background-image: linear-gradient(
+          to bottom,
+          rgba(65, 72, 104, 0.2) 1px,
+          transparent 1px
+        );
+        background-size: 100% 45px;
+        background-position: 0 0;
+      }
+
+      /* Small events */
+      .event[style*="height: 25px"],
+      .event[style*="height: 15px"],
+      .event[style*="height: 10px"] {
+        font-size: 0.8rem;
+        padding: 1px 4px;
+      }
+
+      .event[style*="height: 25px"] .time,
+      .event[style*="height: 15px"] .time,
+      .event[style*="height: 10px"] .time {
+        font-size: 0.6rem;
+      }
+
+      /* Terminal-style cursor effect in the header */
+      .header::after {
+        content: "_";
+        animation: blink 1s step-end infinite;
+      }
+
+      @keyframes blink {
+        50% {
+          opacity: 0;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="calendar-nav">
+        <button class="nav-button" onclick="navigateWeek(-1)">
+          Previous Week
+        </button>
+        <div class="date-range" id="dateRange"></div>
+        <button class="nav-button" onclick="navigateWeek(1)">Next Week</button>
+      </div>
+
+      <div class="calendar-container">
+        <!-- Headers will be dynamically inserted -->
+      </div>
+
+      <!-- Add tooltip container -->
+      <div class="event-tooltip" id="eventTooltip">
+        <div class="tooltip-time"></div>
+        <div class="tooltip-title"></div>
+      </div>
+
+      <!-- Navigation Bar -->
+      <div class="nav-bar">
+        <a href="/" class="nav-item calendar active">Calendar</a>
+        <a href="/plan" class="nav-item plan">Plan</a>
+      </div>
+    </div>
+
+    <script>
+      let currentStartDate = null;
+      let allEvents = {};
+      let startHour = null;
+      let endHour = null;
+
+      function determineTimeRange(events) {
+        let earliest = 23;
+        let latest = 0;
+
+        Object.values(events)
+          .flat()
+          .forEach((event) => {
+            const startTime = new Date(event.start_time);
+            const endTime = new Date(event.end_time);
+            earliest = Math.min(earliest, startTime.getHours());
+            latest = Math.max(
+              latest,
+              endTime.getHours() + (endTime.getMinutes() > 0 ? 1 : 0)
+            );
+          });
+
+        // Enforce minimum end time of 17:00 (5 PM)
+        latest = Math.max(17, latest);
+
+        return { start: earliest, end: latest };
+      }
+
+      function formatHeaderDate(dateStr) {
+        const date = new Date(dateStr);
+        return `${date.toLocaleDateString("en-US", {
+          weekday: "short",
+        })} ${date.getDate()}`;
+      }
+
+      function getDatesInRange(startDate, numDays = 7) {
+        const dates = [];
+        const start = new Date(startDate);
+
+        for (let i = 0; i < numDays; i++) {
+          const date = new Date(start);
+          date.setDate(start.getDate() + i);
+          dates.push(date.toISOString().split("T")[0]);
+        }
+        return dates;
+      }
+
+      function updateDateRange() {
+        const endDate = new Date(currentStartDate);
+        endDate.setDate(endDate.getDate() + 6); // Show full week
+
+        // Format with month and year
+        const startDisplay = new Date(currentStartDate).toLocaleDateString(
+          "en-US",
+          {
+            month: "long",
+            day: "numeric",
+            year: "numeric",
+          }
+        );
+        const endDisplay = endDate.toLocaleDateString("en-US", {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        });
+
+        document.getElementById(
+          "dateRange"
+        ).textContent = `${startDisplay} - ${endDisplay}`;
+      }
+
+      function navigateWeek(direction) {
+        const newStart = new Date(currentStartDate);
+        newStart.setDate(newStart.getDate() + direction * 7);
+        currentStartDate = newStart.toISOString().split("T")[0];
+        renderCalendar();
+      }
+
+      function createTimeSlots() {
+        const timeColumn = document.querySelector(".time-column");
+        timeColumn.innerHTML = ""; // Clear existing slots
+
+        for (let hour = startHour; hour <= endHour; hour++) {
+          const timeSlot = document.createElement("div");
+          timeSlot.className = "time-slot";
+          timeSlot.textContent = `${hour.toString().padStart(2, "0")}:00`;
+          timeColumn.appendChild(timeSlot);
+        }
+      }
+
+      function calculatePosition(startTime, endTime) {
+        const start = new Date(startTime);
+        const end = new Date(endTime);
+
+        const startHours =
+          start.getHours() - startHour + start.getMinutes() / 60;
+        const endHours = end.getHours() - startHour + end.getMinutes() / 60;
+
+        const top = startHours * 45; // Changed from 60 to 45
+        const height = (endHours - startHours) * 45; // Changed from 60 to 45
+
+        return { top, height };
+      }
+
+      function createCalendarStructure(dates) {
+        const container = document.querySelector(".calendar-container");
+        container.innerHTML = `
+          <!-- Headers -->
+          <div class="header">Time</div>
+          ${dates
+            .map(
+              (date) => `
+            <div class="header">${formatHeaderDate(date)}</div>
+          `
+            )
+            .join("")}
+
+          <!-- Time Column -->
+          <div class="time-column"></div>
+
+          <!-- Day Columns -->
+          ${dates
+            .map(
+              (date) => `
+            <div class="day-column" id="day-${date}"></div>
+          `
+            )
+            .join("")}
+        `;
+
+        createTimeSlots();
+      }
+
+      function renderCalendar() {
+        const dates = getDatesInRange(currentStartDate);
+        createCalendarStructure(dates);
+        updateDateRange();
+
+        dates.forEach((date) => {
+          const events = allEvents[date] || [];
+          const dayColumn = document.getElementById(`day-${date}`);
+          if (!dayColumn) return;
+
+          events.forEach((event) => {
+            const { top, height } = calculatePosition(
+              event.start_time,
+              event.end_time
+            );
+
+            const eventDiv = document.createElement("div");
+            eventDiv.className = `event ${
+              event.type === "session" ? "session" : "event-type"
+            }`;
+            eventDiv.innerHTML = `
+              <div class="time">
+                ${new Date(event.start_time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })} - 
+                ${new Date(event.end_time).toLocaleTimeString([], {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+              <div class="title">${event.task_title || event.title}</div>
+            `;
+
+            eventDiv.style.top = `${top}px`;
+            eventDiv.style.height = `${height}px`;
+
+            eventDiv.addEventListener("mouseenter", (e) =>
+              showTooltip(e, event)
+            );
+            eventDiv.addEventListener("mouseleave", hideTooltip);
+
+            dayColumn.appendChild(eventDiv);
+          });
+        });
+      }
+
+      // Fetch and initialize calendar
+      fetch("/api/calendar")
+        .then((response) => response.json())
+        .then((data) => {
+          allEvents = data;
+          currentStartDate = Object.keys(data).sort(
+            (a, b) => new Date(a) - new Date(b)
+          )[0];
+
+          const { start, end } = determineTimeRange(data);
+          startHour = start;
+          endHour = end;
+
+          const style = document.createElement("style");
+          const hourCount = endHour - startHour + 1;
+          style.textContent = `
+            .day-column { 
+              height: ${hourCount * 45}px !important; 
+            }
+            .time-column {
+              height: ${hourCount * 45}px !important;
+            }
+          `;
+          document.head.appendChild(style);
+
+          renderCalendar();
+        })
+        .catch((error) => console.error("Error:", error));
+
+      function showTooltip(event, eventData) {
+        const tooltip = document.getElementById("eventTooltip");
+        const rect = event.target.getBoundingClientRect();
+
+        // Format the time strings
+        const startTime = new Date(eventData.start_time).toLocaleTimeString(
+          [],
+          {
+            hour: "2-digit",
+            minute: "2-digit",
+          }
+        );
+        const endTime = new Date(eventData.end_time).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        // Update tooltip content
+        tooltip.querySelector(
+          ".tooltip-time"
+        ).textContent = `${startTime} - ${endTime}`;
+        tooltip.querySelector(".tooltip-title").textContent =
+          eventData.task_title || eventData.title;
+
+        // Position the tooltip
+        const scrollTop =
+          window.pageYOffset || document.documentElement.scrollTop;
+        const scrollLeft =
+          window.pageXOffset || document.documentElement.scrollLeft;
+
+        // Position tooltip above the event if there's room, below if not
+        const tooltipHeight = 70; // Approximate height
+        const spaceAbove = rect.top;
+        const spaceBelow = window.innerHeight - rect.bottom;
+
+        const topPosition =
+          spaceBelow > tooltipHeight
+            ? rect.bottom + scrollTop + 5
+            : rect.top + scrollTop - tooltipHeight - 5;
+
+        tooltip.style.top = `${topPosition}px`;
+        tooltip.style.left = `${rect.left + scrollLeft}px`;
+        tooltip.classList.add("visible");
+      }
+
+      function hideTooltip() {
+        const tooltip = document.getElementById("eventTooltip");
+        tooltip.classList.remove("visible");
+      }
+    </script>
+  </body>
+</html>
