@@ -39,6 +39,7 @@ class Task:
     
     # Organization
     id: str = None
+    tag_ids: set[str] = field(default_factory=set)  # References to Tag objects
     parent_id: Optional[str] = None
     subtask_ids: set[str] = field(default_factory=set)
     
@@ -91,7 +92,11 @@ class Task:
         subtask.parent_id = self.id
         # Also add as a DURING dependency
         self.add_dependency(subtask, DependencyType.DURING)
-
+        
+    def add_tag(self, tag_id: str):
+        """Add a tag to a task"""
+        self.tag_ids.add(tag_id)
+        
     def assign_time_profile(self, profile: 'TimeProfile'):
         """Assign a time profile to this task"""
         if profile not in self.time_profiles:
