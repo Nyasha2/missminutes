@@ -6,6 +6,7 @@ from enum import Enum
 from dateutil.rrule import rrule, DAILY, WEEKLY, MONTHLY, YEARLY, MO, TU, WE, TH, FR, SA, SU
 from .timedomain import TimeDomain
 from .timeprofile import TimeProfile
+from .tags import Tag
 from .events import Event
 
 class RecurrencePattern(Enum):
@@ -44,7 +45,7 @@ class Task:
     subtask_ids: set[str] = field(default_factory=set)
     
     # Scheduling constraints
-    time_profiles: list['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
+    time_profiles: set['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
     task_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Task ID -> dependency type
     event_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Event ID -> dependency type
     min_session_length: Optional[timedelta] = timedelta(minutes=15)
@@ -93,14 +94,18 @@ class Task:
         # Also add as a DURING dependency
         self.add_dependency(subtask, DependencyType.DURING)
         
-    def add_tag(self, tag_id: str):
-        """Add a tag to a task"""
-        self.tag_ids.add(tag_id)
+    def add_tag(self, tag: 'Tag'):
+        """Adds a tag to a task, applying all defined tag constraints to task.
+           The tag constraints for buffer after, buffer before, min_session_length,
+           max_session_length override the task's constraints.
+           The task's time profiles are updated with the tag's time profiles.
+        """
+        self.tag_ids.add(tag.id)
         
     def assign_time_profile(self, profile: 'TimeProfile'):
         """Assign a time profile to this task"""
         if profile not in self.time_profiles:
-            self.time_profiles.append(profile)
+            self.time_profiles.add(profile)
 
     def remove_time_profile(self, profile: 'TimeProfile'):
         """Remove a time profile from this task"""
