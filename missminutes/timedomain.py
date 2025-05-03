@@ -2,21 +2,32 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 import copy
 from typing import Optional, Callable
-from portion import closed, IntervalDict
+from portion import closed, IntervalDict, Interval
 from .timeprofile import DayOfWeek, TimeProfile
+
 
 @dataclass
 class TimeDomain:
     """A collection of available time slots within a scheduling period"""
     time_slots: IntervalDict = field(default_factory=IntervalDict)
-    
+                
     def add_slot(self, start: datetime, end: datetime, weight: int = 1) -> None:
         """Add a time slot to the map"""
         self.time_slots[closed(start, end)] = weight
     
-    def remove_slot(self, start: datetime, end: datetime) -> None:
+    def remove_slot(self, start: datetime, end: datetime) -> IntervalDict | None | object:
         """Remove a specific slot from the map"""
-        self.time_slots.pop(closed(start, end), None)
+        return self.time_slots.pop(closed(start, end), None)
+    
+    def remove_slot_interval(self, interval_to_remove : Interval) -> None:
+        """Remove the specified interval from the time domain.
+        This operation modifies the TimeDomain in place.
+
+        Args:
+            interval_to_remove: A portion.Interval representing the time to remove.
+        """
+        if not interval_to_remove.empty:
+            self.time_slots = self.time_slots[self.time_slots.domain() - interval_to_remove]
     
     @classmethod
     def from_time_profile(cls, profile: TimeProfile, start_date: datetime, 

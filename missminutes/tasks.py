@@ -45,7 +45,7 @@ class Task:
     subtask_ids: set[str] = field(default_factory=set)
     
     # Scheduling constraints
-    time_profiles: set['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
+    time_profiles: list['TimeProfile'] = field(default_factory=list)  # Direct references to TimeProfile objects
     task_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Task ID -> dependency type
     event_dependencies: dict[str, DependencyType] = field(default_factory=dict)  # Event ID -> dependency type
     min_session_length: Optional[timedelta] = timedelta(minutes=15)
@@ -105,7 +105,7 @@ class Task:
     def assign_time_profile(self, profile: 'TimeProfile'):
         """Assign a time profile to this task"""
         if profile not in self.time_profiles:
-            self.time_profiles.add(profile)
+            self.time_profiles.append(profile)
 
     def remove_time_profile(self, profile: 'TimeProfile'):
         """Remove a time profile from this task"""

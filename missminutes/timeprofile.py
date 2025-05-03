@@ -45,6 +45,15 @@ class TimeWindow:
         start_val = self.start_hour * 60 + self.start_minute
         end_val = self.end_hour * 60 + self.end_minute
         return start_val <= time_val < end_val
+    
+    def __dict__(self):
+        """Return a dictionary representation of the TimeWindow"""
+        return {
+            'start_hour': self.start_hour,
+            'start_minute': self.start_minute,
+            'end_hour': self.end_hour,
+            'end_minute': self.end_minute
+        }
 
 
 @dataclass
